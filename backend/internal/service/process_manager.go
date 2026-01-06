@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-20 14:25:42
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-11-20 14:25:58
+ * @LastEditTime        : 2026-01-06 17:25:38
  * @FilePath            : frp-web-testbackendinternalserviceprocess_manager.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -35,7 +35,7 @@ func (pm *ProcessManager) Start(server *model.FrpServer) error {
 	}
 
 	cmd := exec.Command(server.BinaryPath, "-c", server.ConfigPath)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	setSysProcAttr(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("启动进程失败: %v", err)
