@@ -7,7 +7,7 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: 构建后端
-FROM golang:1.21-alpine AS backend-builder
+FROM golang:1.24-alpine AS backend-builder
 ARG TARGETARCH
 WORKDIR /app
 RUN apk add --no-cache gcc musl-dev
