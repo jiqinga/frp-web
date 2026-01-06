@@ -19,7 +19,7 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o s
 # Stage 3: 最终运行镜像
 FROM alpine:3.19
 RUN apk add --no-cache nginx ca-certificates tzdata sqlite-libs \
-    && mkdir -p /app/data /app/configs /var/run/nginx /usr/share/nginx/html
+    && mkdir -p /app/data /app/data/daemon /app/configs /var/run/nginx /usr/share/nginx/html
 
 WORKDIR /app
 
@@ -35,7 +35,6 @@ COPY web/nginx.conf /etc/nginx/http.d/default.conf
 
 # 复制数据文件
 COPY backend/data/ip2region_v4.xdb /app/data/ip2region_v4.xdb
-COPY backend/data/daemon /app/data/daemon
 
 # 创建启动脚本
 RUN echo '#!/bin/sh' > /app/start.sh && \
