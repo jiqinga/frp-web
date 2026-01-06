@@ -2,8 +2,8 @@ export class WebSocketClient {
   private ws: WebSocket | null = null;
   private url: string = '';
   private token: string = '';
-  private reconnectTimer: number | null = null;
-  private heartbeatTimer: number | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private messageHandlers: Map<string, ((data: unknown) => void)[]> = new Map();
   private isDisconnecting: boolean = false;
   private isConnecting: boolean = false;
