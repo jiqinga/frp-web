@@ -1,0 +1,280 @@
+/* 响应式布局工具类 */
+
+/* ==================== 断点定义 ==================== */
+/* 
+ * sm: 640px  - 小屏手机
+ * md: 768px  - 平板竖屏
+ * lg: 1024px - 平板横屏/小笔记本
+ * xl: 1280px - 桌面显示器
+ * 2xl: 1536px - 大屏显示器
+ */
+
+/* ==================== 移动端优先的隐藏类 ==================== */
+
+/* 默认隐藏，在指定断点及以上显示 */
+.hidden-mobile {
+  @apply hidden sm:block;
+}
+
+.hidden-tablet {
+  @apply hidden md:block;
+}
+
+.hidden-desktop {
+  @apply hidden lg:block;
+}
+
+/* 在指定断点及以上隐藏 */
+.show-mobile-only {
+  @apply block sm:hidden;
+}
+
+.show-tablet-only {
+  @apply hidden sm:block lg:hidden;
+}
+
+/* ==================== 表格响应式 ==================== */
+
+/* 表格容器 - 移动端横向滚动 */
+.table-responsive {
+  @apply w-full overflow-x-auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 表格最小宽度 - 防止内容挤压 */
+.table-responsive table {
+  @apply min-w-[640px];
+}
+
+/* 移动端表格单元格紧凑模式 */
+@media (max-width: 639px) {
+  .table-compact-mobile th,
+  .table-compact-mobile td {
+    @apply px-2 py-1.5 text-xs;
+  }
+}
+
+/* 表格列响应式隐藏 */
+.col-hide-sm {
+  @apply hidden sm:table-cell;
+}
+
+.col-hide-md {
+  @apply hidden md:table-cell;
+}
+
+.col-hide-lg {
+  @apply hidden lg:table-cell;
+}
+
+/* ==================== 卡片网格响应式 ==================== */
+
+/* 统计卡片网格 */
+.stats-grid {
+  @apply grid gap-4;
+  @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+/* 表单网格 */
+.form-grid {
+  @apply grid gap-4;
+  @apply grid-cols-1 md:grid-cols-2;
+}
+
+/* 操作按钮组 */
+.action-group {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+/* ==================== 页面标题栏响应式 ==================== */
+
+.page-header {
+  @apply flex flex-col gap-4;
+  @apply sm:flex-row sm:items-center sm:justify-between;
+}
+
+.page-title {
+  @apply text-xl font-bold text-white;
+  @apply sm:text-2xl;
+}
+
+.page-subtitle {
+  @apply text-sm text-slate-400;
+  @apply sm:text-base;
+}
+
+/* ==================== 工具栏响应式 ==================== */
+
+.toolbar {
+  @apply flex flex-col gap-3;
+  @apply sm:flex-row sm:items-center sm:flex-wrap;
+}
+
+.toolbar-left {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.toolbar-right {
+  @apply flex flex-wrap items-center gap-2;
+  @apply sm:ml-auto;
+}
+
+/* ==================== 搜索框响应式 ==================== */
+
+.search-box {
+  @apply w-full;
+  @apply sm:w-48 md:w-64;
+}
+
+/* ==================== 模态框响应式 ==================== */
+
+/* 移动端模态框全屏 */
+@media (max-width: 639px) {
+  .modal-responsive {
+    @apply !max-w-full !m-0 !rounded-none !min-h-screen;
+  }
+  
+  .modal-responsive .modal-content {
+    @apply min-h-screen;
+  }
+}
+
+/* ==================== 按钮响应式 ==================== */
+
+/* 移动端按钮紧凑模式 */
+@media (max-width: 639px) {
+  .btn-responsive {
+    @apply px-3 py-1.5 text-sm;
+  }
+  
+  .btn-responsive .btn-icon {
+    @apply h-4 w-4;
+  }
+}
+
+/* 图标按钮 - 移动端只显示图标 */
+.btn-icon-mobile {
+  @apply px-2;
+}
+
+.btn-icon-mobile .btn-text {
+  @apply hidden sm:inline;
+}
+
+/* ==================== 侧边栏响应式 ==================== */
+
+.sidebar-responsive {
+  @apply fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300;
+  @apply -translate-x-full lg:translate-x-0 lg:static;
+}
+
+.sidebar-responsive.open {
+  @apply translate-x-0;
+}
+
+.sidebar-overlay {
+  @apply fixed inset-0 bg-black/50 z-40;
+  @apply lg:hidden;
+}
+
+/* ==================== 内容区域响应式 ==================== */
+
+.main-content {
+  @apply p-4;
+  @apply sm:p-6;
+}
+
+/* ==================== 文本截断响应式 ==================== */
+
+.truncate-responsive {
+  @apply truncate max-w-[100px];
+  @apply sm:max-w-[150px] md:max-w-[200px] lg:max-w-none;
+}
+
+/* ==================== 间距响应式 ==================== */
+
+.gap-responsive {
+  @apply gap-2 sm:gap-3 md:gap-4;
+}
+
+.space-y-responsive > * + * {
+  @apply mt-3 sm:mt-4 md:mt-6;
+}
+
+/* ==================== 字体大小响应式 ==================== */
+
+.text-responsive-sm {
+  @apply text-xs sm:text-sm;
+}
+
+.text-responsive-base {
+  @apply text-sm sm:text-base;
+}
+
+.text-responsive-lg {
+  @apply text-base sm:text-lg md:text-xl;
+}
+
+.text-responsive-xl {
+  @apply text-lg sm:text-xl md:text-2xl;
+}
+
+/* ==================== 移动端触摸优化 ==================== */
+
+@media (max-width: 639px) {
+  /* 增大触摸目标 */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* 移动端按钮间距 */
+  .touch-spacing {
+    @apply gap-3;
+  }
+}
+
+/* ==================== 滚动条优化 ==================== */
+
+/* 移动端隐藏滚动条但保持滚动功能 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 自定义滚动条样式 */
+.scrollbar-custom {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.slate.600') transparent;
+}
+
+.scrollbar-custom::-webkit-scrollbar {
+  @apply w-1.5 h-1.5;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  @apply bg-slate-600 rounded-full;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-500;
+}
+
+/* ==================== 打印样式 ==================== */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+}

@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Node
+web/node_modules
+web/.vscode
+
+# Go
+backend/vendor
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+web/dist
+backend/server
+
+# Data files (will be mounted as volumes)
+backend/data/frp_panel.db
+backend/data/frps
+
+# Docs
+docs
+*.md
+!README.md
+
+# Tests
+*_test.go
+**/*.test.js
+
+# Misc
+.env
+.env.*
+*.log
+Dockerfile
+docker-compose*.yml
+.dockerignore
