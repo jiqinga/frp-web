@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-12-29 15:30:53
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-29 15:31:03
+ * @LastEditTime        : 2026-01-07 10:57:59
  * @FilePath            : frp-web-testbackendinternalmiddlewareerror_handler.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -11,7 +11,7 @@ package middleware
 
 import (
 	"frp-web-panel/internal/errors"
-	"log"
+	"frp-web-panel/internal/logger"
 	"net/http"
 	"runtime/debug"
 
@@ -23,7 +23,7 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[PANIC] %v\n%s", r, debug.Stack())
+				logger.Errorf("[PANIC] %v\n%s", r, debug.Stack())
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"code":    errors.CodeInternal,
 					"message": "服务器内部错误",

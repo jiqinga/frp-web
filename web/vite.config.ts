@@ -13,4 +13,25 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    target: 'es2020',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['recharts', 'lucide-react'],
+          'vendor-utils': ['axios', 'zustand', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 500,
+    sourcemap: false,
+  },
 })

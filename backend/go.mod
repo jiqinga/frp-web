@@ -7,10 +7,12 @@ require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.13
 	github.com/alibabacloud-go/tea v1.3.14
 	github.com/cloudflare/cloudflare-go v0.116.0
+	github.com/gin-contrib/gzip v0.0.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-acme/lego/v4 v4.30.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20251203034732-000e19d41990
 	github.com/matcornic/hermes/v2 v2.1.0
@@ -24,6 +26,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.16
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/dnspod v1.3.16
+	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.46.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.6.0
@@ -72,7 +75,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
@@ -113,6 +115,7 @@ require (
 	github.com/vanng822/css v0.0.0-20190504095207-a21e860bcd04 // indirect
 	github.com/vanng822/go-premailer v0.0.0-20191214114701-be27abe028fe // indirect
 	go.uber.org/mock v0.6.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/mod v0.30.0 // indirect

@@ -7,11 +7,11 @@ package service
 
 import (
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/internal/websocket"
 	"frp-web-panel/pkg/database"
-	"log"
 	"strings"
 )
 
@@ -66,7 +66,7 @@ func NewClientUpdateService(realtimeService *RealtimeService) *ClientUpdateServi
 func (s *ClientUpdateService) setupCallbacks() {
 	// 设置更新进度回调
 	websocket.ClientDaemonHubInstance.SetUpdateProgressCallback(func(clientID uint, updateType string, stage string, progress int, message string, totalBytes int64, downloadedBytes int64) {
-		log.Printf("[ClientUpdateService] 收到更新进度: client_id=%d, type=%s, stage=%s, progress=%d%%", clientID, updateType, stage, progress)
+		logger.Debugf("ClientUpdateService 收到更新进度: client_id=%d, type=%s, stage=%s, progress=%d%%", clientID, updateType, stage, progress)
 		if s.realtimeService != nil {
 			s.realtimeService.BroadcastUpdateProgress(clientID, updateType, stage, progress, message, totalBytes, downloadedBytes)
 		}
@@ -74,7 +74,7 @@ func (s *ClientUpdateService) setupCallbacks() {
 
 	// 设置更新结果回调
 	websocket.ClientDaemonHubInstance.SetUpdateResultCallback(func(clientID uint, updateType string, success bool, version string, message string) {
-		log.Printf("[ClientUpdateService] 收到更新结果: client_id=%d, type=%s, success=%v, version=%s", clientID, updateType, success, version)
+		logger.Infof("ClientUpdateService 收到更新结果: client_id=%d, type=%s, success=%v, version=%s", clientID, updateType, success, version)
 		if s.realtimeService != nil {
 			s.realtimeService.BroadcastUpdateResult(clientID, updateType, success, version, message)
 		}
@@ -91,11 +91,11 @@ func (s *ClientUpdateService) setupCallbacks() {
 
 	// 设置版本上报回调
 	websocket.ClientDaemonHubInstance.SetVersionReportCallback(func(clientID uint, frpcVersion string, daemonVersion string, os string, arch string) {
-		log.Printf("[ClientUpdateService] 收到版本上报: client_id=%d, frpc=%s, daemon=%s, os=%s, arch=%s", clientID, frpcVersion, daemonVersion, os, arch)
+		logger.Debugf("ClientUpdateService 收到版本上报: client_id=%d, frpc=%s, daemon=%s, os=%s, arch=%s", clientID, frpcVersion, daemonVersion, os, arch)
 		s.clientRepo.UpdateVersionInfo(clientID, frpcVersion, daemonVersion, os, arch)
 	})
 
-	log.Printf("[ClientUpdateService] WebSocket回调函数已设置")
+	logger.Info("ClientUpdateService WebSocket回调函数已设置")
 }
 
 // UpdateClient 更新单个客户端
@@ -129,7 +129,7 @@ func (s *ClientUpdateService) UpdateClient(req *UpdateRequest) error {
 		return fmt.Errorf("发送更新命令失败: %v", err)
 	}
 
-	log.Printf("[ClientUpdateService] ✅ 已向客户端 %s (ID=%d) 发送更新命令: type=%s, version=%s", client.Name, req.ClientID, req.UpdateType, version)
+	logger.Infof("ClientUpdateService 已向客户端 %s (ID=%d) 发送更新命令: type=%s, version=%s", client.Name, req.ClientID, req.UpdateType, version)
 	return nil
 }
 
@@ -154,7 +154,7 @@ func (s *ClientUpdateService) BatchUpdateClients(req *BatchUpdateRequest) (succe
 		}
 
 		if err := s.UpdateClient(updateReq); err != nil {
-			log.Printf("[ClientUpdateService] ❌ 更新客户端 %s 失败: %v", client.Name, err)
+			logger.Errorf("ClientUpdateService 更新客户端 %s 失败: %v", client.Name, err)
 			failedClients = append(failedClients, fmt.Sprintf("%s: %v", client.Name, err))
 		} else {
 			successCount++
@@ -237,7 +237,7 @@ func (s *ClientUpdateService) getFrpcUpdateInfo(frpServerID *uint, specifiedVers
 		mirrorService := NewGithubMirrorService()
 		convertedURL, err := mirrorService.ConvertGithubURL(downloadURL, mirrorID)
 		if err != nil {
-			log.Printf("[ClientUpdateService] ⚠️ 转换镜像URL失败: %v，使用原始URL", err)
+			logger.Warnf("ClientUpdateService 转换镜像URL失败: %v，使用原始URL", err)
 		} else {
 			downloadURL = convertedURL
 		}

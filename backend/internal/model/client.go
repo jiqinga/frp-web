@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:24:09
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-26 15:18:15
+ * @LastEditTime        : 2026-01-07 14:30:15
  * @FilePath            : frp-web-testbackendinternalmodelclient.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -25,8 +25,8 @@ type Client struct {
 	FrpcAdminPort  int        `json:"frpc_admin_port"`
 	FrpcAdminUser  string     `json:"frpc_admin_user" gorm:"size:100"`
 	FrpcAdminPwd   string     `json:"frpc_admin_pwd" gorm:"size:255"`
-	FrpServerID    *uint      `json:"frp_server_id"`
-	OnlineStatus   string     `json:"online_status" gorm:"size:20;default:unknown"`
+	FrpServerID    *uint      `json:"frp_server_id" gorm:"index"`
+	OnlineStatus   string     `json:"online_status" gorm:"size:20;default:unknown;index"`
 	LastHeartbeat  *time.Time `json:"last_heartbeat"`
 	ConfigVersion  int        `json:"config_version" gorm:"default:1"`
 	WsConnected    bool       `json:"ws_connected" gorm:"default:false"`

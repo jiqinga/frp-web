@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:30:09
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-26 15:18:40
+ * @LastEditTime        : 2026-01-07 10:58:12
  * @FilePath            : frp-web-testbackendinternalrepositoryclient_repo.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -10,9 +10,9 @@
 package repository
 
 import (
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/pkg/database"
-	"log"
 	"time"
 )
 
@@ -78,12 +78,12 @@ func (r *ClientRepository) GetAllForStatusCheck() ([]model.Client, error) {
 
 // UpdateWSStatus 更新客户端WebSocket连接状态
 func (r *ClientRepository) UpdateWSStatus(id uint, connected bool) error {
-	log.Printf("[ClientRepo] 更新客户端 %d 的WS状态: %v", id, connected)
+	logger.Debugf("[ClientRepo] 更新客户端 %d 的WS状态: %v", id, connected)
 	err := database.DB.Model(&model.Client{}).Where("id = ?", id).Update("ws_connected", connected).Error
 	if err != nil {
-		log.Printf("[ClientRepo] ❌ 更新失败: %v", err)
+		logger.Errorf("[ClientRepo] 更新失败: %v", err)
 	} else {
-		log.Printf("[ClientRepo] ✅ 更新成功")
+		logger.Debugf("[ClientRepo] 更新成功")
 	}
 	return err
 }
@@ -114,7 +114,7 @@ func (r *ClientRepository) UpdateVersionInfo(id uint, frpcVersion, daemonVersion
 	if len(updates) == 0 {
 		return nil
 	}
-	log.Printf("[ClientRepo] 更新客户端 %d 版本信息: %+v", id, updates)
+	logger.Debugf("[ClientRepo] 更新客户端 %d 版本信息: %+v", id, updates)
 	return database.DB.Model(&model.Client{}).Where("id = ?", id).Updates(updates).Error
 }
 
@@ -142,7 +142,7 @@ func (r *ClientRepository) ResetAllClientStatus() error {
 
 // UpdateConfigSyncStatus 更新客户端配置同步状态
 func (r *ClientRepository) UpdateConfigSyncStatus(id uint, status string, errorMsg string, syncTime time.Time) error {
-	log.Printf("[ClientRepo] 更新客户端 %d 配置同步状态: status=%s, error=%s", id, status, errorMsg)
+	logger.Debugf("[ClientRepo] 更新客户端 %d 配置同步状态: status=%s, error=%s", id, status, errorMsg)
 	return database.DB.Model(&model.Client{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"config_sync_status": status,
 		"config_sync_error":  errorMsg,

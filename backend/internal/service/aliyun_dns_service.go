@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-12-22 15:48:28
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-23 17:17:03
+ * @LastEditTime        : 2026-01-07 11:15:21
  * @FilePath            : frp-web-testbackendinternalservicealiyun_dns_service.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -12,7 +12,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
+	"frp-web-panel/internal/logger"
 	"strings"
 
 	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
@@ -49,7 +49,7 @@ func (s *AliyunDNSService) AddRecord(domain, rr, recordType, value string) (stri
 	if err != nil {
 		return "", fmt.Errorf("添加DNS记录失败: %v", err)
 	}
-	log.Printf("[阿里云DNS] 添加记录成功: %s.%s -> %s, RecordId: %s", rr, domain, value, *response.Body.RecordId)
+	logger.Infof("阿里云DNS 添加记录成功: %s.%s -> %s, RecordId: %s", rr, domain, value, *response.Body.RecordId)
 	return *response.Body.RecordId, nil
 }
 
@@ -62,7 +62,7 @@ func (s *AliyunDNSService) DeleteRecord(recordID string) error {
 	if err != nil {
 		return fmt.Errorf("删除DNS记录失败: %v", err)
 	}
-	log.Printf("[阿里云DNS] 删除记录成功: RecordId: %s", recordID)
+	logger.Infof("阿里云DNS 删除记录成功: RecordId: %s", recordID)
 	return nil
 }
 

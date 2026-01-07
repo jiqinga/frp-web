@@ -9,7 +9,7 @@ on:
       tag:
         description: 'Image tag (e.g., v1.0.0 or latest)'
         required: false
-        default: 'manual'
+        default: 'latest'
 
 env:
   REGISTRY: docker.io
@@ -44,8 +44,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'push' }}
+            type=semver,pattern=v{{version}},enable=${{ github.event_name == 'push' }}
+            type=semver,pattern=v{{major}}.{{minor}},enable=${{ github.event_name == 'push' }}
             type=raw,value=latest,enable=${{ github.event_name == 'push' }}
             type=raw,value=${{ github.event.inputs.tag || 'manual' }},enable=${{ github.event_name == 'workflow_dispatch' }}
 

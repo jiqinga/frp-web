@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-12-03 16:06:00
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-03 16:30:51
+ * @LastEditTime        : 2026-01-07 10:57:47
  * @FilePath            : frp-web-testbackendinternalutilip_location.go
  * @Description         : IP归属地查询工具 - 使用 ip2region 离线数据库
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -10,7 +10,7 @@
 package util
 
 import (
-	"log"
+	"frp-web-panel/internal/logger"
 	"net"
 	"path/filepath"
 	"strings"
@@ -36,7 +36,7 @@ func InitIPSearcher(dataDir string) error {
 		cBuff, err := xdb.LoadContentFromFile(dbPath)
 		if err != nil {
 			ipSearcherErr = err
-			log.Printf("[IP2Region] 加载数据文件失败: %v", err)
+			logger.Errorf("[IP2Region] 加载数据文件失败: %v", err)
 			return
 		}
 
@@ -44,18 +44,18 @@ func InitIPSearcher(dataDir string) error {
 		version, err := xdb.VersionFromName("v4")
 		if err != nil {
 			ipSearcherErr = err
-			log.Printf("[IP2Region] 获取版本信息失败: %v", err)
+			logger.Errorf("[IP2Region] 获取版本信息失败: %v", err)
 			return
 		}
 
 		// 创建基于内存的搜索器
 		ipSearcher, ipSearcherErr = xdb.NewWithBuffer(version, cBuff)
 		if ipSearcherErr != nil {
-			log.Printf("[IP2Region] 创建搜索器失败: %v", ipSearcherErr)
+			logger.Errorf("[IP2Region] 创建搜索器失败: %v", ipSearcherErr)
 			return
 		}
 
-		log.Printf("[IP2Region] 初始化成功，数据文件: %s", dbPath)
+		logger.Infof("[IP2Region] 初始化成功，数据文件: %s", dbPath)
 	})
 
 	return ipSearcherErr
@@ -65,7 +65,7 @@ func InitIPSearcher(dataDir string) error {
 func CloseIPSearcher() {
 	if ipSearcher != nil {
 		ipSearcher.Close()
-		log.Println("[IP2Region] 搜索器已关闭")
+		logger.Info("[IP2Region] 搜索器已关闭")
 	}
 }
 
@@ -88,7 +88,7 @@ func GetIPLocation(ip string) string {
 	// 执行查询
 	region, err := ipSearcher.SearchByStr(ip)
 	if err != nil {
-		log.Printf("[IP2Region] 查询IP %s 失败: %v", ip, err)
+		logger.Errorf("[IP2Region] 查询IP %s 失败: %v", ip, err)
 		return "查询失败"
 	}
 

@@ -1,6 +1,6 @@
 package websocket
 
-import "log"
+import "frp-web-panel/internal/logger"
 
 // HandleUpdateProgress 处理更新进度消息
 func (h *ClientDaemonHub) HandleUpdateProgress(clientID uint, data map[string]interface{}) {
@@ -9,7 +9,7 @@ func (h *ClientDaemonHub) HandleUpdateProgress(clientID uint, data map[string]in
 	h.mu.RUnlock()
 
 	if callback == nil {
-		log.Printf("[ClientDaemonHub] 更新进度回调未设置，忽略消息")
+		logger.Warnf("[ClientDaemonHub] 更新进度回调未设置，忽略消息")
 		return
 	}
 
@@ -36,7 +36,7 @@ func (h *ClientDaemonHub) HandleUpdateResult(clientID uint, data map[string]inte
 	h.mu.RUnlock()
 
 	if callback == nil {
-		log.Printf("[ClientDaemonHub] 更新结果回调未设置，忽略消息")
+		logger.Warnf("[ClientDaemonHub] 更新结果回调未设置，忽略消息")
 		return
 	}
 
@@ -55,7 +55,7 @@ func (h *ClientDaemonHub) HandleVersionReport(clientID uint, data map[string]int
 	h.mu.RUnlock()
 
 	if callback == nil {
-		log.Printf("[ClientDaemonHub] 版本上报回调未设置，忽略消息")
+		logger.Warnf("[ClientDaemonHub] 版本上报回调未设置，忽略消息")
 		return
 	}
 
@@ -69,14 +69,14 @@ func (h *ClientDaemonHub) HandleVersionReport(clientID uint, data map[string]int
 
 // HandleLogData 处理日志数据消息
 func (h *ClientDaemonHub) HandleLogData(clientID uint, data map[string]interface{}) {
-	log.Printf("[ClientDaemonHub] 收到客户端 %d 的日志数据: %+v", clientID, data)
+	logger.Debugf("[ClientDaemonHub] 收到客户端 %d 的日志数据: %+v", clientID, data)
 
 	h.mu.RLock()
 	callback := h.logDataCallback
 	h.mu.RUnlock()
 
 	if callback == nil {
-		log.Printf("[ClientDaemonHub] ⚠️ 日志数据回调未设置，忽略消息")
+		logger.Warnf("[ClientDaemonHub] 日志数据回调未设置，忽略消息")
 		return
 	}
 
@@ -87,7 +87,7 @@ func (h *ClientDaemonHub) HandleLogData(clientID uint, data map[string]interface
 		timestamp = int64(ts)
 	}
 
-	log.Printf("[ClientDaemonHub] 转发日志: clientID=%d, logType=%s, line=%s", clientID, logType, line)
+	logger.Debugf("[ClientDaemonHub] 转发日志: clientID=%d, logType=%s, line=%s", clientID, logType, line)
 	go callback(clientID, logType, line, timestamp)
 }
 
@@ -97,7 +97,7 @@ func (h *ClientDaemonHub) HandleFrpcControlResult(clientID uint, data map[string
 	success, _ := data["success"].(bool)
 	message, _ := data["message"].(string)
 
-	log.Printf("[ClientDaemonHub] 处理frpc控制结果: clientID=%d, action=%s, success=%v", clientID, action, success)
+	logger.Debugf("[ClientDaemonHub] 处理frpc控制结果: clientID=%d, action=%s, success=%v", clientID, action, success)
 
 	// 通知等待的请求
 	h.NotifyFrpcControlResult(clientID, success, message)
@@ -119,7 +119,7 @@ func (h *ClientDaemonHub) HandleConfigSyncResult(clientID uint, data map[string]
 	h.mu.RUnlock()
 
 	if callback == nil {
-		log.Printf("[ClientDaemonHub] 配置同步结果回调未设置，忽略消息")
+		logger.Warnf("[ClientDaemonHub] 配置同步结果回调未设置，忽略消息")
 		return
 	}
 
@@ -127,6 +127,6 @@ func (h *ClientDaemonHub) HandleConfigSyncResult(clientID uint, data map[string]
 	errorMsg, _ := data["error"].(string)
 	rolledBack, _ := data["rolled_back"].(bool)
 
-	log.Printf("[ClientDaemonHub] 收到客户端 %d 配置同步结果: success=%v, error=%s, rolled_back=%v", clientID, success, errorMsg, rolledBack)
+	logger.Debugf("[ClientDaemonHub] 收到客户端 %d 配置同步结果: success=%v, error=%s, rolled_back=%v", clientID, success, errorMsg, rolledBack)
 	go callback(clientID, success, errorMsg, rolledBack)
 }

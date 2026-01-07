@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-19 17:08:26
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-05 11:04:56
+ * @LastEditTime        : 2026-01-07 11:02:13
  * @FilePath            : frp-web-testbackendinternalfrpfrps_client.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -11,7 +11,7 @@ package frp
 
 import (
 	"fmt"
-	"log"
+	"frp-web-panel/internal/logger"
 	"strings"
 	"time"
 
@@ -81,18 +81,18 @@ func (c *FrpsClient) GetProxyTraffic(proxyName string) (*TrafficData, error) {
 
 // GetClients 获取所有连接的客户端列表
 func (c *FrpsClient) GetClients() (*ClientListResponse, error) {
-	log.Printf("[DEBUG] GetClients - 开始查询客户端列表")
-	log.Printf("[DEBUG] GetClients - Base URL: %s", c.baseURL)
+	logger.Debug("GetClients - 开始查询客户端列表")
+	logger.Debugf("GetClients - Base URL: %s", c.baseURL)
 
 	var response ClientListResponse
 	if err := c.doRequest("GET", "/api/client", &response); err != nil {
-		log.Printf("[DEBUG] GetClients - 查询失败: %v", err)
+		logger.Debugf("GetClients - 查询失败: %v", err)
 		return nil, err
 	}
 
-	log.Printf("[DEBUG] GetClients - 查询成功, 客户端数量: %d", len(response.Clients))
+	logger.Debugf("GetClients - 查询成功, 客户端数量: %d", len(response.Clients))
 	for i, client := range response.Clients {
-		log.Printf("[DEBUG] GetClients - 客户端[%d]: User=%s, Version=%s, RunID=%s",
+		logger.Debugf("GetClients - 客户端[%d]: User=%s, Version=%s, RunID=%s",
 			i, client.User, client.Version, client.RunID)
 	}
 

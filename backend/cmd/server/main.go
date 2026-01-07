@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:28:16
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-29 16:52:51
+ * @LastEditTime        : 2026-01-07 14:28:07
  * @FilePath            : frp-web-testbackendcmdservermain.go
  * @Description         : 程序入口
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -32,9 +32,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/middleware"
 	"frp-web-panel/internal/router"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -43,6 +43,7 @@ import (
 
 	_ "frp-web-panel/docs"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -52,7 +53,7 @@ func main() {
 	// 启动初始化
 	result, err := Bootstrap("./configs/config.yaml")
 	if err != nil {
-		log.Fatalf("启动初始化失败: %v", err)
+		logger.Fatalf("启动初始化失败: %v", err)
 	}
 	defer Cleanup()
 
@@ -69,6 +70,7 @@ func main() {
 	gin.SetMode(result.Config.Server.Mode)
 	r := gin.Default()
 
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(middleware.SecurityHeadersMiddleware())
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.RateLimitMiddleware(100))
@@ -78,7 +80,7 @@ func main() {
 	router.SetupRoutes(r, c)
 
 	addr := fmt.Sprintf(":%d", result.Config.Server.Port)
-	log.Printf("服务器启动于 %s", addr)
+	logger.Infof("服务器启动于 %s", addr)
 
 	srv := &http.Server{
 		Addr:    addr,
@@ -87,7 +89,7 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("启动服务器失败: %v", err)
+			logger.Fatalf("启动服务器失败: %v", err)
 		}
 	}()
 
@@ -95,7 +97,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("正在关闭服务器...")
+	logger.Info("正在关闭服务器...")
 
 	// 停止后台服务
 	StopServices(c, 10*time.Second)
@@ -104,8 +106,8 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		logger.Fatal("Server forced to shutdown")
 	}
 
-	log.Println("服务器已退出")
+	logger.Info("服务器已退出")
 }

@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:32:13
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-24 17:21:23
+ * @LastEditTime        : 2026-01-07 11:09:25
  * @FilePath            : frp-web-testbackendinternalserviceproxy_service.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -13,10 +13,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/pkg/database"
-	"log"
 	"math/rand"
 	"time"
 )
@@ -65,10 +65,10 @@ func (s *ProxyService) CreateProxy(proxy *model.Proxy) error {
 	if (proxy.Type == "tcp" || proxy.Type == "udp") && proxy.RemotePort == 0 {
 		randomPort, err := s.generateRandomPort()
 		if err != nil {
-			log.Printf("[代理创建] ⚠️ 自动分配端口失败: %v，将使用默认值 0", err)
+			logger.Warnf("代理创建 自动分配端口失败: %v，将使用默认值 0", err)
 		} else {
 			proxy.RemotePort = randomPort
-			log.Printf("[代理创建] ✅ 自动分配远程端口: %d", randomPort)
+			logger.Infof("代理创建 自动分配远程端口: %d", randomPort)
 		}
 	}
 
@@ -103,20 +103,20 @@ func (s *ProxyService) CreateProxy(proxy *model.Proxy) error {
 
 // syncDNSRecordAsync 异步同步 DNS 记录
 func (s *ProxyService) syncDNSRecordAsync(proxy *model.Proxy) {
-	log.Printf("[DNS同步] 开始为代理 %s (ID=%d) 同步 DNS 记录, 域名: %s", proxy.Name, proxy.ID, proxy.CustomDomains)
+	logger.Infof("DNS同步 开始为代理 %s (ID=%d) 同步 DNS 记录, 域名: %s", proxy.Name, proxy.ID, proxy.CustomDomains)
 
 	// 获取客户端信息以获取 FRP 服务器 ID
 	client, err := s.clientRepo.FindByID(proxy.ClientID)
 	if err != nil {
-		log.Printf("[DNS同步] ❌ 获取客户端信息失败: %v", err)
+		logger.Errorf("DNS同步 获取客户端信息失败: %v", err)
 		return
 	}
 
 	// 同步 DNS 记录
 	if err := s.dnsService.SyncDNSRecord(proxy, client.FrpServerID); err != nil {
-		log.Printf("[DNS同步] ❌ 同步 DNS 记录失败: %v", err)
+		logger.Errorf("DNS同步 同步 DNS 记录失败: %v", err)
 	} else {
-		log.Printf("[DNS同步] ✅ DNS 记录同步成功")
+		logger.Info("DNS同步 DNS 记录同步成功")
 	}
 }
 
@@ -161,19 +161,19 @@ func (s *ProxyService) UpdateProxy(proxy *model.Proxy) error {
 	// 获取旧的代理信息
 	oldProxy, err := s.proxyRepo.FindByID(proxy.ID)
 	if err != nil {
-		log.Printf("[代理更新] ⚠️ 获取旧代理信息失败: %v", err)
+		logger.Warnf("代理更新 获取旧代理信息失败: %v", err)
 	}
 
 	// 处理 DNS 同步逻辑 - 在更新代理之前先删除旧的 DNS 记录
 	if oldProxy != nil {
 		// 如果之前启用了 DNS 同步但现在禁用了，或者域名变了，同步删除旧的 DNS 记录
 		if oldProxy.EnableDNSSync && (!proxy.EnableDNSSync || oldProxy.CustomDomains != proxy.CustomDomains) {
-			log.Printf("[代理更新] 域名变更或DNS同步关闭，同步删除旧DNS记录: %s -> %s", oldProxy.CustomDomains, proxy.CustomDomains)
+			logger.Infof("代理更新 域名变更或DNS同步关闭，同步删除旧DNS记录: %s -> %s", oldProxy.CustomDomains, proxy.CustomDomains)
 			if err := s.dnsService.DeleteDNSRecord(oldProxy.ID); err != nil {
-				log.Printf("[代理更新] ⚠️ 删除旧DNS记录失败: %v", err)
+				logger.Warnf("代理更新 删除旧DNS记录失败: %v", err)
 				// 继续执行，不阻塞代理更新
 			} else {
-				log.Printf("[代理更新] ✅ 旧DNS记录删除成功")
+				logger.Info("代理更新 旧DNS记录删除成功")
 			}
 		}
 	}
@@ -197,17 +197,17 @@ func (s *ProxyService) DeleteProxy(id uint, deleteDNS bool) error {
 	// 先获取代理信息，用于删除 DNS 记录
 	proxy, err := s.proxyRepo.FindByID(id)
 	if err != nil {
-		log.Printf("[代理删除] ⚠️ 获取代理信息失败: %v", err)
+		logger.Warnf("代理删除 获取代理信息失败: %v", err)
 	} else if proxy.EnableDNSSync && deleteDNS {
 		// 同步删除 DNS 记录
-		log.Printf("[代理删除] 开始删除代理 %s (ID=%d) 的 DNS 记录", proxy.Name, proxy.ID)
+		logger.Infof("代理删除 开始删除代理 %s (ID=%d) 的 DNS 记录", proxy.Name, proxy.ID)
 		if err := s.dnsService.DeleteDNSRecord(proxy.ID); err != nil {
-			log.Printf("[代理删除] ❌ 删除 DNS 记录失败: %v", err)
+			logger.Errorf("代理删除 删除 DNS 记录失败: %v", err)
 		} else {
-			log.Printf("[代理删除] ✅ DNS 记录删除成功")
+			logger.Info("代理删除 DNS 记录删除成功")
 		}
 	} else if proxy.EnableDNSSync && !deleteDNS {
-		log.Printf("[代理删除] 用户选择保留 DNS 记录，跳过删除")
+		logger.Info("代理删除 用户选择保留 DNS 记录，跳过删除")
 	}
 
 	return s.proxyRepo.Delete(id)
@@ -225,26 +225,26 @@ func (s *ProxyService) ToggleProxy(id uint) (*model.Proxy, error) {
 // - Web管理界面配置（webServer.*）
 // - 所有启用的代理配置
 func (s *ProxyService) ExportClientConfig(clientID uint) (string, error) {
-	log.Printf("[配置导出] ========== 开始导出客户端 %d 的 TOML 配置 ==========", clientID)
+	logger.Debugf("配置导出 开始导出客户端 %d 的 TOML 配置", clientID)
 
 	client, err := s.clientRepo.FindByID(clientID)
 	if err != nil {
-		log.Printf("[配置导出] ❌ 获取客户端信息失败: %v", err)
+		logger.Errorf("配置导出 获取客户端信息失败: %v", err)
 		return "", err
 	}
-	log.Printf("[配置导出] 客户端信息: Name=%s, ServerAddr=%s, ServerPort=%d",
+	logger.Debugf("配置导出 客户端信息: Name=%s, ServerAddr=%s, ServerPort=%d",
 		client.Name, client.ServerAddr, client.ServerPort)
 
 	// 只获取启用的代理
 	proxies, err := s.proxyRepo.FindEnabledByClientID(clientID)
 	if err != nil {
-		log.Printf("[配置导出] ❌ 获取代理列表失败: %v", err)
+		logger.Errorf("配置导出 获取代理列表失败: %v", err)
 		return "", err
 	}
 
-	log.Printf("[配置导出] 找到 %d 个启用的代理:", len(proxies))
+	logger.Debugf("配置导出 找到 %d 个启用的代理:", len(proxies))
 	for i, p := range proxies {
-		log.Printf("[配置导出]   [%d] ID=%d, Name=%s, Type=%s, LocalPort=%d, RemotePort=%d, Enabled=%v",
+		logger.Debugf("配置导出   [%d] ID=%d, Name=%s, Type=%s, LocalPort=%d, RemotePort=%d, Enabled=%v",
 			i+1, p.ID, p.Name, p.Type, p.LocalPort, p.RemotePort, p.Enabled)
 	}
 
@@ -290,10 +290,10 @@ func (s *ProxyService) ExportClientConfig(clientID uint) (string, error) {
 			buf.WriteString(fmt.Sprintf("webServer.password = \"%s\"\n", client.FrpcAdminPwd))
 		}
 		buf.WriteString("\n")
-		log.Printf("[配置导出] WebServer 配置: addr=%s, port=%d, user=%s",
+		logger.Debugf("配置导出 WebServer 配置: addr=%s, port=%d, user=%s",
 			adminAddr, client.FrpcAdminPort, client.FrpcAdminUser)
 	} else {
-		log.Printf("[配置导出] ⚠️ 客户端未配置 WebServer (FrpcAdminPort=0)")
+		logger.Warn("配置导出 客户端未配置 WebServer (FrpcAdminPort=0)")
 	}
 
 	// ==================== 代理配置 ====================
@@ -462,44 +462,44 @@ func (s *ProxyService) ExportClientConfig(clientID uint) (string, error) {
 					}
 				}
 			}
-			log.Printf("[配置导出] 代理 %s 使用插件: %s", proxy.Name, proxy.PluginType)
+			logger.Debugf("配置导出 代理 %s 使用插件: %s", proxy.Name, proxy.PluginType)
 		}
 
 		buf.WriteString("\n")
 	}
 
 	configStr := buf.String()
-	log.Printf("[配置导出] 生成的完整 TOML 配置:\n%s", configStr)
-	log.Printf("[配置导出] ========== 配置导出完成 ==========")
+	logger.Debugf("配置导出 生成的完整 TOML 配置:\n%s", configStr)
+	logger.Debug("配置导出 配置导出完成")
 	return configStr, nil
 }
 
 // getCertPaths 获取证书路径
 func (s *ProxyService) getCertPaths(proxy *model.Proxy, defaultCrtPath, defaultKeyPath string) (string, string) {
-	log.Printf("[证书路径诊断] 代理 %s: CertID=%v, defaultCrtPath=%s, defaultKeyPath=%s",
+	logger.Debugf("证书路径诊断 代理 %s: CertID=%v, defaultCrtPath=%s, defaultKeyPath=%s",
 		proxy.Name, proxy.CertID, defaultCrtPath, defaultKeyPath)
 
 	// 如果没有关联证书，使用默认路径
 	if proxy.CertID == nil {
-		log.Printf("[证书路径诊断] 代理 %s: CertID=nil，使用默认路径", proxy.Name)
+		logger.Debugf("证书路径诊断 代理 %s: CertID=nil，使用默认路径", proxy.Name)
 		return defaultCrtPath, defaultKeyPath
 	}
 
 	// 获取证书信息
 	cert, err := s.certRepo.FindByID(*proxy.CertID)
 	if err != nil {
-		log.Printf("[证书路径诊断] 代理 %s: 获取证书失败 (CertID=%d): %v，使用默认路径", proxy.Name, *proxy.CertID, err)
+		logger.Debugf("证书路径诊断 代理 %s: 获取证书失败 (CertID=%d): %v，使用默认路径", proxy.Name, *proxy.CertID, err)
 		return defaultCrtPath, defaultKeyPath
 	}
 	if cert == nil {
-		log.Printf("[证书路径诊断] 代理 %s: 证书记录不存在 (CertID=%d)，使用默认路径", proxy.Name, *proxy.CertID)
+		logger.Debugf("证书路径诊断 代理 %s: 证书记录不存在 (CertID=%d)，使用默认路径", proxy.Name, *proxy.CertID)
 		return defaultCrtPath, defaultKeyPath
 	}
 
-	log.Printf("[证书路径诊断] 代理 %s: 证书状态=%s, 域名=%s", proxy.Name, cert.Status, cert.Domain)
+	logger.Debugf("证书路径诊断 代理 %s: 证书状态=%s, 域名=%s", proxy.Name, cert.Status, cert.Domain)
 
 	if cert.Status != model.CertStatusActive {
-		log.Printf("[证书路径诊断] 代理 %s: 证书状态不是 active (当前=%s)，使用默认路径", proxy.Name, cert.Status)
+		logger.Debugf("证书路径诊断 代理 %s: 证书状态不是 active (当前=%s)，使用默认路径", proxy.Name, cert.Status)
 		return defaultCrtPath, defaultKeyPath
 	}
 
@@ -508,6 +508,6 @@ func (s *ProxyService) getCertPaths(proxy *model.Proxy, defaultCrtPath, defaultK
 	crtPath := fmt.Sprintf("/opt/frpc/certs/%s.crt", domain)
 	keyPath := fmt.Sprintf("/opt/frpc/certs/%s.key", domain)
 
-	log.Printf("[证书路径诊断] 代理 %s 使用证书路径: crt=%s, key=%s", proxy.Name, crtPath, keyPath)
+	logger.Debugf("证书路径诊断 代理 %s 使用证书路径: crt=%s, key=%s", proxy.Name, crtPath, keyPath)
 	return crtPath, keyPath
 }

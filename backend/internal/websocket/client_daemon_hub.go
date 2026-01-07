@@ -1,7 +1,7 @@
 package websocket
 
 import (
-	"log"
+	"frp-web-panel/internal/logger"
 	"sync"
 	"time"
 
@@ -52,7 +52,7 @@ func (h *ClientDaemonHub) SetStatusCallback(callback ClientStatusCallback) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.statusCallback = callback
-	log.Printf("[ClientDaemonHub] 状态回调函数已设置")
+	logger.Debugf("[ClientDaemonHub] 状态回调函数已设置")
 }
 
 // GetStatusCallback 获取当前状态回调函数
@@ -67,7 +67,7 @@ func (h *ClientDaemonHub) SetUpdateProgressCallback(callback UpdateProgressCallb
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.updateProgressCallback = callback
-	log.Printf("[ClientDaemonHub] 更新进度回调函数已设置")
+	logger.Debugf("[ClientDaemonHub] 更新进度回调函数已设置")
 }
 
 // SetUpdateResultCallback 设置更新结果回调函数
@@ -75,7 +75,7 @@ func (h *ClientDaemonHub) SetUpdateResultCallback(callback UpdateResultCallback)
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.updateResultCallback = callback
-	log.Printf("[ClientDaemonHub] 更新结果回调函数已设置")
+	logger.Debugf("[ClientDaemonHub] 更新结果回调函数已设置")
 }
 
 // SetVersionReportCallback 设置版本上报回调函数
@@ -83,7 +83,7 @@ func (h *ClientDaemonHub) SetVersionReportCallback(callback VersionReportCallbac
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.versionReportCallback = callback
-	log.Printf("[ClientDaemonHub] 版本上报回调函数已设置")
+	logger.Debugf("[ClientDaemonHub] 版本上报回调函数已设置")
 }
 
 // SetLogDataCallback 设置日志数据回调函数
@@ -91,7 +91,7 @@ func (h *ClientDaemonHub) SetLogDataCallback(callback LogDataCallback) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.logDataCallback = callback
-	log.Printf("[ClientDaemonHub] 日志数据回调函数已设置")
+	logger.Debugf("[ClientDaemonHub] 日志数据回调函数已设置")
 }
 
 // SetFrpcControlResultCallback 设置frpc控制结果回调函数
@@ -99,7 +99,7 @@ func (h *ClientDaemonHub) SetFrpcControlResultCallback(callback FrpcControlResul
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.frpcControlResultCallback = callback
-	log.Printf("[ClientDaemonHub] frpc控制结果回调函数已设置")
+	logger.Debugf("[ClientDaemonHub] frpc控制结果回调函数已设置")
 }
 
 // SetConfigSyncResultCallback 设置配置同步结果回调函数
@@ -107,7 +107,7 @@ func (h *ClientDaemonHub) SetConfigSyncResultCallback(callback ConfigSyncResultC
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.configSyncResultCallback = callback
-	log.Printf("[ClientDaemonHub] 配置同步结果回调函数已设置")
+	logger.Debugf("[ClientDaemonHub] 配置同步结果回调函数已设置")
 }
 
 func (h *ClientDaemonHub) Run() {
@@ -118,7 +118,7 @@ func (h *ClientDaemonHub) Run() {
 			h.clients[conn.ClientID] = conn
 			callback := h.statusCallback
 			h.mu.Unlock()
-			log.Printf("[ClientDaemonHub] 客户端 %d 已连接", conn.ClientID)
+			logger.Infof("[ClientDaemonHub] 客户端 %d 已连接", conn.ClientID)
 			if callback != nil {
 				go callback(conn.ClientID, true)
 			}
@@ -128,7 +128,7 @@ func (h *ClientDaemonHub) Run() {
 			if _, ok := h.clients[conn.ClientID]; ok {
 				delete(h.clients, conn.ClientID)
 				close(conn.Send)
-				log.Printf("[ClientDaemonHub] 客户端 %d 已断开", conn.ClientID)
+				logger.Infof("[ClientDaemonHub] 客户端 %d 已断开", conn.ClientID)
 				callback := h.statusCallback
 				h.mu.Unlock()
 				if callback != nil {
@@ -214,7 +214,7 @@ func (dc *DaemonConnection) ReadPump(handler MessageHandler) {
 		err := dc.Conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket错误: %v", err)
+				logger.Errorf("WebSocket错误: %v", err)
 			}
 			break
 		}

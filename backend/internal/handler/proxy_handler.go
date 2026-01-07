@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:33:43
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-31 17:03:55
+ * @LastEditTime        : 2026-01-07 11:02:25
  * @FilePath            : frp-web-testbackendinternalhandlerproxy_handler.go
  * @Description         : 代理处理器
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -11,12 +11,12 @@ package handler
 
 import (
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/internal/service"
 	"frp-web-panel/internal/util"
 	"frp-web-panel/internal/websocket"
-	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -42,24 +42,24 @@ func NewProxyHandler() *ProxyHandler {
 
 // pushConfigUpdate 推送配置更新到客户端
 func (h *ProxyHandler) pushConfigUpdate(clientID uint) {
-	log.Printf("[配置推送] 开始推送配置到客户端 ID=%d", clientID)
+	logger.Debugf("[配置推送] 开始推送配置到客户端 ID=%d", clientID)
 
 	// 检查客户端是否在线
 	isOnline := websocket.ClientDaemonHubInstance.IsClientOnline(clientID)
-	log.Printf("[配置推送] 客户端 ID=%d 在线状态: %v", clientID, isOnline)
+	logger.Debugf("[配置推送] 客户端 ID=%d 在线状态: %v", clientID, isOnline)
 
 	if !isOnline {
-		log.Printf("[配置推送] ⚠️ 客户端 ID=%d 不在线，跳过配置推送", clientID)
+		logger.Warnf("[配置推送] 客户端 ID=%d 不在线，跳过配置推送", clientID)
 		return
 	}
 
 	// 获取客户端信息
 	client, err := h.clientService.GetClient(clientID)
 	if err != nil {
-		log.Printf("[配置推送] ❌ 获取客户端信息失败: %v", err)
+		logger.Errorf("[配置推送] 获取客户端信息失败: %v", err)
 		return
 	}
-	log.Printf("[配置推送] 客户端 %s 当前配置版本: %d", client.Name, client.ConfigVersion)
+	logger.Debugf("[配置推送] 客户端 %s 当前配置版本: %d", client.Name, client.ConfigVersion)
 
 	// 🔧 修复：在推送配置前，先同步所需的证书
 	h.syncCertificatesForClient(clientID)
@@ -67,28 +67,28 @@ func (h *ProxyHandler) pushConfigUpdate(clientID uint) {
 	// 生成配置
 	config, err := h.proxyService.ExportClientConfig(clientID)
 	if err != nil {
-		log.Printf("[配置推送] ❌ 生成配置失败: %v", err)
+		logger.Errorf("[配置推送] 生成配置失败: %v", err)
 		// 生成配置失败，更新状态为 failed
 		h.clientService.UpdateConfigSyncStatus(clientID, false, fmt.Sprintf("生成配置失败: %v", err), false)
 		return
 	}
-	log.Printf("[配置推送] 生成的配置内容:\n%s", config)
+	logger.Debugf("[配置推送] 生成的配置内容:\n%s", config)
 
 	// 递增版本号
 	newVersion := client.ConfigVersion + 1
-	log.Printf("[配置推送] 新版本号: %d", newVersion)
+	logger.Debugf("[配置推送] 新版本号: %d", newVersion)
 
 	// 推送前设置状态为 pending
 	h.clientService.SetConfigSyncPending(clientID)
 
 	// 推送配置
 	if err := websocket.ClientDaemonHubInstance.PushConfigUpdate(clientID, config, newVersion); err != nil {
-		log.Printf("[配置推送] ❌ 推送配置失败: %v", err)
+		logger.Errorf("[配置推送] 推送配置失败: %v", err)
 		// 推送失败，更新状态为 failed
 		h.clientService.UpdateConfigSyncStatus(clientID, false, fmt.Sprintf("推送配置失败: %v", err), false)
 		return
 	}
-	log.Printf("[配置推送] ✅ 配置已推送到客户端 ID=%d，等待 daemon 返回同步结果", clientID)
+	logger.Infof("[配置推送] 配置已推送到客户端 ID=%d，等待 daemon 返回同步结果", clientID)
 
 	// 更新配置版本号到数据库
 	h.clientService.UpdateConfigSync(clientID, newVersion, nil)
@@ -96,12 +96,12 @@ func (h *ProxyHandler) pushConfigUpdate(clientID uint) {
 
 // syncCertificatesForClient 同步客户端所需的所有证书
 func (h *ProxyHandler) syncCertificatesForClient(clientID uint) {
-	log.Printf("[证书同步] 开始同步客户端 ID=%d 所需的证书", clientID)
+	logger.Debugf("[证书同步] 开始同步客户端 ID=%d 所需的证书", clientID)
 
 	// 获取该客户端所有启用的代理
 	proxies, err := h.proxyService.GetProxiesByClient(clientID)
 	if err != nil {
-		log.Printf("[证书同步] ❌ 获取代理列表失败: %v", err)
+		logger.Errorf("[证书同步] 获取代理列表失败: %v", err)
 		return
 	}
 
@@ -114,37 +114,37 @@ func (h *ProxyHandler) syncCertificatesForClient(clientID uint) {
 	}
 
 	if len(certIDs) == 0 {
-		log.Printf("[证书同步] 客户端 ID=%d 没有需要同步的证书", clientID)
+		logger.Debugf("[证书同步] 客户端 ID=%d 没有需要同步的证书", clientID)
 		return
 	}
 
-	log.Printf("[证书同步] 客户端 ID=%d 需要同步 %d 个证书", clientID, len(certIDs))
+	logger.Debugf("[证书同步] 客户端 ID=%d 需要同步 %d 个证书", clientID, len(certIDs))
 
 	// 同步每个证书
 	for certID := range certIDs {
 		cert, err := h.certRepo.FindByID(certID)
 		if err != nil {
-			log.Printf("[证书同步] ❌ 获取证书 ID=%d 失败: %v", certID, err)
+			logger.Errorf("[证书同步] 获取证书 ID=%d 失败: %v", certID, err)
 			continue
 		}
 		if cert == nil {
-			log.Printf("[证书同步] ⚠️ 证书 ID=%d 不存在", certID)
+			logger.Warnf("[证书同步] 证书 ID=%d 不存在", certID)
 			continue
 		}
 		if cert.Status != model.CertStatusActive {
-			log.Printf("[证书同步] ⚠️ 证书 ID=%d 状态不是 active (当前=%s)，跳过", certID, cert.Status)
+			logger.Warnf("[证书同步] 证书 ID=%d 状态不是 active (当前=%s)，跳过", certID, cert.Status)
 			continue
 		}
 		if cert.CertPEM == "" || cert.KeyPEM == "" {
-			log.Printf("[证书同步] ⚠️ 证书 ID=%d 内容为空，跳过", certID)
+			logger.Warnf("[证书同步] 证书 ID=%d 内容为空，跳过", certID)
 			continue
 		}
 
 		// 推送证书到客户端
 		if err := websocket.ClientDaemonHubInstance.PushCertSync(clientID, cert.Domain, cert.CertPEM, cert.KeyPEM); err != nil {
-			log.Printf("[证书同步] ❌ 推送证书 %s 失败: %v", cert.Domain, err)
+			logger.Errorf("[证书同步] 推送证书 %s 失败: %v", cert.Domain, err)
 		} else {
-			log.Printf("[证书同步] ✅ 证书 %s 已推送到客户端 ID=%d", cert.Domain, clientID)
+			logger.Infof("[证书同步] 证书 %s 已推送到客户端 ID=%d", cert.Domain, clientID)
 		}
 	}
 }
@@ -216,13 +216,13 @@ func (h *ProxyHandler) CreateProxy(c *gin.Context) {
 
 	// 校验客户端是否在线
 	if !h.checkClientOnline(proxy.ClientID) {
-		log.Printf("[代理创建] ❌ 客户端 ID=%d 离线，拒绝创建代理", proxy.ClientID)
+		logger.Warnf("[代理创建] 客户端 ID=%d 离线，拒绝创建代理", proxy.ClientID)
 		util.Error(c, 400, "客户端离线，无法创建代理")
 		return
 	}
 
 	if err := h.proxyService.CreateProxy(&proxy); err != nil {
-		log.Printf("[代理创建] ❌ 创建失败: %v", err)
+		logger.Errorf("[代理创建] 创建失败: %v", err)
 		util.Error(c, 400, err.Error())
 		return
 	}
@@ -257,14 +257,14 @@ func (h *ProxyHandler) UpdateProxy(c *gin.Context) {
 	// 获取更新前的代理信息
 	oldProxy, err := h.proxyService.GetProxy(uint(id))
 	if err != nil {
-		log.Printf("[代理更新] ❌ 获取代理信息失败: %v", err)
+		logger.Errorf("[代理更新] 获取代理信息失败: %v", err)
 		util.Error(c, 500, "获取代理信息失败")
 		return
 	}
 
 	// 校验客户端是否在线
 	if !h.checkClientOnline(oldProxy.ClientID) {
-		log.Printf("[代理更新] ❌ 客户端 ID=%d 离线，拒绝更新代理", oldProxy.ClientID)
+		logger.Warnf("[代理更新] 客户端 ID=%d 离线，拒绝更新代理", oldProxy.ClientID)
 		util.Error(c, 400, "客户端离线，无法更新代理")
 		return
 	}
@@ -275,7 +275,7 @@ func (h *ProxyHandler) UpdateProxy(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[代理更新] ID=%d, Name=%s, RemotePort=%d -> %d",
+	logger.Debugf("[代理更新] ID=%d, Name=%s, RemotePort=%d -> %d",
 		id, proxy.Name, oldProxy.RemotePort, proxy.RemotePort)
 
 	// 🔧 修复：更新代理时保留原有的 enabled 状态和运行时统计数据
@@ -317,12 +317,12 @@ func (h *ProxyHandler) UpdateProxy(c *gin.Context) {
 
 	proxy.ID = uint(id)
 	if err := h.proxyService.UpdateProxy(&proxy); err != nil {
-		log.Printf("[代理更新] ❌ 更新失败: %v", err)
+		logger.Errorf("[代理更新] 更新失败: %v", err)
 		util.Error(c, 500, "更新代理失败")
 		return
 	}
 
-	log.Printf("[代理更新] ✅ 更新成功, 推送配置到客户端 ClientID=%d", proxy.ClientID)
+	logger.Infof("[代理更新] 更新成功, 推送配置到客户端 ClientID=%d", proxy.ClientID)
 
 	// 推送配置更新
 	h.pushConfigUpdate(proxy.ClientID)
@@ -364,7 +364,7 @@ func (h *ProxyHandler) DeleteProxy(c *gin.Context) {
 
 	// 校验客户端是否在线
 	if !h.checkClientOnline(proxy.ClientID) {
-		log.Printf("[代理删除] ❌ 客户端 ID=%d 离线，拒绝删除代理", proxy.ClientID)
+		logger.Warnf("[代理删除] 客户端 ID=%d 离线，拒绝删除代理", proxy.ClientID)
 		util.Error(c, 400, "客户端离线，无法删除代理")
 		return
 	}
@@ -376,7 +376,7 @@ func (h *ProxyHandler) DeleteProxy(c *gin.Context) {
 	clientID := proxy.ClientID
 	certID := proxy.CertID
 
-	log.Printf("[代理删除] 删除代理 ID=%d, deleteDNS=%v", id, deleteDNS)
+	logger.Debugf("[代理删除] 删除代理 ID=%d, deleteDNS=%v", id, deleteDNS)
 
 	if err := h.proxyService.DeleteProxy(uint(id), deleteDNS); err != nil {
 		util.Error(c, 500, "删除代理失败")
@@ -410,27 +410,27 @@ func (h *ProxyHandler) cleanupCertificateIfNeeded(clientID uint, certID *uint, d
 	// 检查同客户端的其他代理是否还在使用该证书
 	count, err := h.proxyRepo.CountByCertIDAndClientID(*certID, clientID, deletedProxyID)
 	if err != nil {
-		log.Printf("[证书清理] ❌ 检查证书使用情况失败: %v", err)
+		logger.Errorf("[证书清理] 检查证书使用情况失败: %v", err)
 		return
 	}
 
 	if count > 0 {
-		log.Printf("[证书清理] 证书 ID=%d 仍被 %d 个代理使用，跳过删除", *certID, count)
+		logger.Debugf("[证书清理] 证书 ID=%d 仍被 %d 个代理使用，跳过删除", *certID, count)
 		return
 	}
 
 	// 获取证书信息以获取域名
 	cert, err := h.certRepo.FindByID(*certID)
 	if err != nil || cert == nil {
-		log.Printf("[证书清理] ⚠️ 获取证书信息失败: %v", err)
+		logger.Warnf("[证书清理] 获取证书信息失败: %v", err)
 		return
 	}
 
 	// 推送证书删除命令到客户端
 	if err := websocket.ClientDaemonHubInstance.PushCertDelete(clientID, cert.Domain); err != nil {
-		log.Printf("[证书清理] ❌ 推送证书删除失败: %v", err)
+		logger.Errorf("[证书清理] 推送证书删除失败: %v", err)
 	} else {
-		log.Printf("[证书清理] ✅ 已推送证书删除命令: domain=%s, clientID=%d", cert.Domain, clientID)
+		logger.Infof("[证书清理] 已推送证书删除命令: domain=%s, clientID=%d", cert.Domain, clientID)
 	}
 }
 
@@ -458,7 +458,7 @@ func (h *ProxyHandler) ToggleProxy(c *gin.Context) {
 
 	// 校验客户端是否在线
 	if !h.checkClientOnline(existingProxy.ClientID) {
-		log.Printf("[代理状态切换] ❌ 客户端 ID=%d 离线，拒绝切换状态", existingProxy.ClientID)
+		logger.Warnf("[代理状态切换] 客户端 ID=%d 离线，拒绝切换状态", existingProxy.ClientID)
 		util.Error(c, 400, "客户端离线，无法切换代理状态")
 		return
 	}
@@ -469,7 +469,7 @@ func (h *ProxyHandler) ToggleProxy(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[代理状态切换] 代理 ID=%d, Name=%s, Enabled=%v", proxy.ID, proxy.Name, proxy.Enabled)
+	logger.Debugf("[代理状态切换] 代理 ID=%d, Name=%s, Enabled=%v", proxy.ID, proxy.Name, proxy.Enabled)
 
 	// 推送配置更新
 	h.pushConfigUpdate(proxy.ClientID)

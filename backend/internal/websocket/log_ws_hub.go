@@ -2,7 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
-	"log"
+	"frp-web-panel/internal/logger"
 	"sync"
 	"time"
 
@@ -45,7 +45,7 @@ func (h *LogWSHub) Register(client *LogWSClient) {
 		h.clients[client.ClientID] = make(map[*LogWSClient]bool)
 	}
 	h.clients[client.ClientID][client] = true
-	log.Printf("[LogWSHub] 前端连接已注册，clientID=%d", client.ClientID)
+	logger.Debugf("[LogWSHub] 前端连接已注册，clientID=%d", client.ClientID)
 }
 
 // Unregister 注销客户端连接
@@ -59,7 +59,7 @@ func (h *LogWSHub) Unregister(client *LogWSClient) {
 			if len(conns) == 0 {
 				delete(h.clients, client.ClientID)
 			}
-			log.Printf("[LogWSHub] 前端连接已注销，clientID=%d", client.ClientID)
+			logger.Debugf("[LogWSHub] 前端连接已注销，clientID=%d", client.ClientID)
 		}
 	}
 }
@@ -71,10 +71,10 @@ func (h *LogWSHub) BroadcastLog(clientID uint, logType string, line string, time
 	connCount := len(conns)
 	h.mu.RUnlock()
 
-	log.Printf("[LogWSHub] BroadcastLog: clientID=%d, logType=%s, 连接数=%d, line=%s", clientID, logType, connCount, line)
+	logger.Debugf("[LogWSHub] BroadcastLog: clientID=%d, logType=%s, 连接数=%d, line=%s", clientID, logType, connCount, line)
 
 	if connCount == 0 {
-		log.Printf("[LogWSHub] ⚠️ 没有找到 clientID=%d 的前端连接", clientID)
+		logger.Warnf("[LogWSHub] 没有找到 clientID=%d 的前端连接", clientID)
 		return
 	}
 

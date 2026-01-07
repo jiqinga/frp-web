@@ -2,18 +2,18 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 16:03:26
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-30 16:30:42
- * @FilePath            : frp-web-test/backend/internal/handler/traffic_handler.go
+ * @LastEditTime        : 2026-01-07 11:00:33
+ * @FilePath            : frp-web-testbackendinternalhandlertraffic_handler.go
  * @Description         : 流量统计处理器
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
  */
 package handler
 
 import (
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/internal/service"
 	"frp-web-panel/internal/util"
-	"log"
 	"strconv"
 	"time"
 
@@ -78,12 +78,12 @@ func (h *TrafficHandler) GetTrafficHistory(c *gin.Context) {
 	start, _ := time.Parse(time.RFC3339, startStr)
 	end, _ := time.Parse(time.RFC3339, endStr)
 
-	log.Printf("[DEBUG GetTrafficHistory] proxyID=%d, start=%v, end=%v", proxyID, start, end)
+	logger.Debugf("[GetTrafficHistory] proxyID=%d, start=%v, end=%v", proxyID, start, end)
 
 	// 1. 根据 proxy_id 获取 proxy 信息
 	proxy, err := h.proxyRepo.FindByID(uint(proxyID))
 	if err != nil {
-		log.Printf("[DEBUG GetTrafficHistory] 获取代理信息失败: %v", err)
+		logger.Debugf("[GetTrafficHistory] 获取代理信息失败: %v", err)
 		util.Error(c, 404, "代理不存在")
 		return
 	}
@@ -91,14 +91,14 @@ func (h *TrafficHandler) GetTrafficHistory(c *gin.Context) {
 	// 2. 根据 client_id 获取 client 信息，获取 frp_server_id
 	client, err := h.clientRepo.FindByID(proxy.ClientID)
 	if err != nil {
-		log.Printf("[DEBUG GetTrafficHistory] 获取客户端信息失败: %v", err)
+		logger.Debugf("[GetTrafficHistory] 获取客户端信息失败: %v", err)
 		util.Error(c, 404, "客户端不存在")
 		return
 	}
 
 	// 3. 检查 frp_server_id 是否存在
 	if client.FrpServerID == nil {
-		log.Printf("[DEBUG GetTrafficHistory] 客户端 %d 没有关联 FRP 服务器", client.ID)
+		logger.Debugf("[GetTrafficHistory] 客户端 %d 没有关联 FRP 服务器", client.ID)
 		util.Success(c, []interface{}{})
 		return
 	}
@@ -107,24 +107,24 @@ func (h *TrafficHandler) GetTrafficHistory(c *gin.Context) {
 
 	// 4. 构建完整的代理名称（FRP 使用 clientName.proxyName 格式）
 	fullProxyName := client.Name + "." + proxy.Name
-	log.Printf("[DEBUG GetTrafficHistory] 查询 proxy_metrics_history: serverID=%d, fullProxyName=%s", serverID, fullProxyName)
+	logger.Debugf("[GetTrafficHistory] 查询 proxy_metrics_history: serverID=%d, fullProxyName=%s", serverID, fullProxyName)
 
 	// 5. 从 proxy_metrics_history 表查询流量历史
 	history, err := h.proxyMetricsRepo.GetHistory(serverID, fullProxyName, start, end)
 	if err != nil {
-		log.Printf("[DEBUG GetTrafficHistory] 查询失败: %v", err)
+		logger.Debugf("[GetTrafficHistory] 查询失败: %v", err)
 		util.Error(c, 500, "获取流量历史失败")
 		return
 	}
 
-	log.Printf("[DEBUG GetTrafficHistory] 查询 proxy_metrics_history 表结果: %d 条记录", len(history))
+	logger.Debugf("[GetTrafficHistory] 查询 proxy_metrics_history 表结果: %d 条记录", len(history))
 
 	// 如果使用完整名称没有找到数据，尝试只用代理名称（兼容旧数据）
 	if len(history) == 0 {
-		log.Printf("[DEBUG GetTrafficHistory] 完整名称无结果，尝试使用短名称: %s", proxy.Name)
+		logger.Debugf("[GetTrafficHistory] 完整名称无结果，尝试使用短名称: %s", proxy.Name)
 		history, err = h.proxyMetricsRepo.GetHistory(serverID, proxy.Name, start, end)
 		if err == nil && len(history) > 0 {
-			log.Printf("[DEBUG GetTrafficHistory] 使用短名称 %s 查询到 %d 条记录", proxy.Name, len(history))
+			logger.Debugf("[GetTrafficHistory] 使用短名称 %s 查询到 %d 条记录", proxy.Name, len(history))
 		}
 	}
 

@@ -36,6 +36,13 @@ export function LogViewerModal({
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
+  // 弹窗打开时重置搜索状态
+  useEffect(() => {
+    if (open) {
+      setSearchKeyword('');
+    }
+  }, [open]);
+
   // 自动滚动到底部
   useEffect(() => {
     if (autoScroll && logContainerRef.current) {
@@ -43,11 +50,12 @@ export function LogViewerModal({
     }
   }, [logs, autoScroll]);
 
-  // 关闭时停止流
+  // 关闭时停止流并清空日志
   const handleClose = () => {
     if (isStreaming) {
       onStopStream();
     }
+    onClearLogs();
     onClose();
   };
 
@@ -55,7 +63,7 @@ export function LogViewerModal({
   const highlightedLogs = useMemo(() => {
     if (!searchKeyword.trim()) return logs;
     const regex = new RegExp(`(${searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return logs.map(line => line.replace(regex, '<mark class="bg-yellow-500/50 text-yellow-200">$1</mark>'));
+    return logs.map(line => line.replace(regex, '<mark class="bg-yellow-400/60 text-yellow-900 dark:bg-yellow-500/50 dark:text-yellow-200 rounded px-0.5">$1</mark>'));
   }, [logs, searchKeyword]);
 
   // 导出日志
@@ -80,7 +88,7 @@ export function LogViewerModal({
     >
       <div className="flex flex-col h-[70vh]">
         {/* 工具栏 */}
-        <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border bg-surface-hover">
+        <div className="flex flex-wrap items-center gap-4 p-4 border-b border-border bg-surface-hover">
           {/* 日志类型选择 */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-foreground-muted">日志类型:</span>
@@ -111,19 +119,19 @@ export function LogViewerModal({
           </div>
 
           {/* 搜索框 */}
-          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <Search className="h-4 w-4 text-foreground-muted" />
+          <div className="flex items-center gap-2 shrink-0">
+            <Search className="h-4 w-4 text-foreground-muted shrink-0" />
             <input
               type="text"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
               placeholder="搜索关键词..."
-              className="flex-1 px-3 py-1.5 text-sm bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-40 px-3 py-1.5 text-sm bg-surface border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
           {/* 操作按钮 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {isStreaming ? (
               <Button
                 size="sm"
@@ -191,7 +199,7 @@ export function LogViewerModal({
           ref={logContainerRef}
           className={cn(
             "flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed",
-            "bg-gray-900 text-gray-300"
+            "bg-surface-elevated text-foreground-secondary"
           )}
         >
           {logs.length === 0 ? (
@@ -203,7 +211,7 @@ export function LogViewerModal({
               {highlightedLogs.map((line, index) => (
                 <div
                   key={index}
-                  className="hover:bg-white/5 px-2 py-0.5 rounded"
+                  className="hover:bg-hover-overlay px-2 py-0.5 rounded"
                   dangerouslySetInnerHTML={{ __html: line }}
                 />
               ))}

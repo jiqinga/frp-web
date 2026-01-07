@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
-	"log"
 	"net/http"
 	"time"
 )
@@ -180,7 +180,7 @@ func (n *SystemEventNotifier) notifySystemEvent(ruleType string, message string,
 		}
 
 		if err := n.alertRepo.CreateAlert(alert); err != nil {
-			log.Printf("[系统告警] 创建告警日志失败: %v", err)
+			logger.Errorf("系统告警 创建告警日志失败: %v", err)
 			continue
 		}
 

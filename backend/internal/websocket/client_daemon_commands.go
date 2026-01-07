@@ -3,7 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"frp-web-panel/internal/logger"
 	"time"
 )
 
@@ -42,7 +42,7 @@ func (h *ClientDaemonHub) SendUpdateCommand(clientID uint, updateType string, ve
 	h.mu.RUnlock()
 
 	if !exists {
-		log.Printf("[ClientDaemonHub] 客户端 %d 未连接，无法发送更新命令", clientID)
+		logger.Warnf("[ClientDaemonHub] 客户端 %d 未连接，无法发送更新命令", clientID)
 		return fmt.Errorf("客户端 %d 未连接", clientID)
 	}
 
@@ -65,7 +65,7 @@ func (h *ClientDaemonHub) SendUpdateCommand(clientID uint, updateType string, ve
 
 	select {
 	case conn.Send <- data:
-		log.Printf("[ClientDaemonHub] ✅ 已向客户端 %d 发送更新命令: type=%s, version=%s", clientID, updateType, version)
+		logger.Infof("[ClientDaemonHub] 已向客户端 %d 发送更新命令: type=%s, version=%s", clientID, updateType, version)
 		return nil
 	default:
 		return fmt.Errorf("发送队列已满，无法发送更新命令")
@@ -79,7 +79,7 @@ func (h *ClientDaemonHub) PushCertSync(clientID uint, domain string, certPEM str
 	h.mu.RUnlock()
 
 	if !exists {
-		log.Printf("[ClientDaemonHub] 客户端 %d 未连接，无法推送证书", clientID)
+		logger.Warnf("[ClientDaemonHub] 客户端 %d 未连接，无法推送证书", clientID)
 		return fmt.Errorf("客户端 %d 未连接", clientID)
 	}
 
@@ -101,7 +101,7 @@ func (h *ClientDaemonHub) PushCertSync(clientID uint, domain string, certPEM str
 
 	select {
 	case conn.Send <- data:
-		log.Printf("[ClientDaemonHub] ✅ 已向客户端 %d 推送证书: domain=%s", clientID, domain)
+		logger.Infof("[ClientDaemonHub] 已向客户端 %d 推送证书: domain=%s", clientID, domain)
 		return nil
 	default:
 		return fmt.Errorf("发送队列已满，无法推送证书")
@@ -115,7 +115,7 @@ func (h *ClientDaemonHub) PushCertDelete(clientID uint, domain string) error {
 	h.mu.RUnlock()
 
 	if !exists {
-		log.Printf("[ClientDaemonHub] 客户端 %d 未连接，无法推送证书删除", clientID)
+		logger.Warnf("[ClientDaemonHub] 客户端 %d 未连接，无法推送证书删除", clientID)
 		return fmt.Errorf("客户端 %d 未连接", clientID)
 	}
 
@@ -135,7 +135,7 @@ func (h *ClientDaemonHub) PushCertDelete(clientID uint, domain string) error {
 
 	select {
 	case conn.Send <- data:
-		log.Printf("[ClientDaemonHub] ✅ 已向客户端 %d 推送证书删除: domain=%s", clientID, domain)
+		logger.Infof("[ClientDaemonHub] 已向客户端 %d 推送证书删除: domain=%s", clientID, domain)
 		return nil
 	default:
 		return fmt.Errorf("发送队列已满，无法推送证书删除")
@@ -149,7 +149,7 @@ func (h *ClientDaemonHub) SendLogStreamCommand(clientID uint, logType string, ac
 	h.mu.RUnlock()
 
 	if !exists {
-		log.Printf("[ClientDaemonHub] 客户端 %d 未连接，无法发送日志流命令", clientID)
+		logger.Warnf("[ClientDaemonHub] 客户端 %d 未连接，无法发送日志流命令", clientID)
 		return fmt.Errorf("客户端 %d 未连接", clientID)
 	}
 
@@ -171,7 +171,7 @@ func (h *ClientDaemonHub) SendLogStreamCommand(clientID uint, logType string, ac
 
 	select {
 	case conn.Send <- data:
-		log.Printf("[ClientDaemonHub] ✅ 已向客户端 %d 发送日志流命令: type=%s, action=%s", clientID, logType, action)
+		logger.Infof("[ClientDaemonHub] 已向客户端 %d 发送日志流命令: type=%s, action=%s", clientID, logType, action)
 		return nil
 	default:
 		return fmt.Errorf("发送队列已满，无法发送日志流命令")
@@ -191,7 +191,7 @@ func (h *ClientDaemonHub) SendFrpcControlCommand(clientID uint, action string) e
 	h.mu.RUnlock()
 
 	if !exists {
-		log.Printf("[ClientDaemonHub] 客户端 %d 未连接，无法发送frpc控制命令", clientID)
+		logger.Warnf("[ClientDaemonHub] 客户端 %d 未连接，无法发送frpc控制命令", clientID)
 		return fmt.Errorf("客户端 %d 未连接", clientID)
 	}
 
@@ -211,7 +211,7 @@ func (h *ClientDaemonHub) SendFrpcControlCommand(clientID uint, action string) e
 
 	select {
 	case conn.Send <- data:
-		log.Printf("[ClientDaemonHub] ✅ 已向客户端 %d 发送frpc控制命令: action=%s", clientID, action)
+		logger.Infof("[ClientDaemonHub] 已向客户端 %d 发送frpc控制命令: action=%s", clientID, action)
 		return nil
 	default:
 		return fmt.Errorf("发送队列已满，无法发送frpc控制命令")
@@ -244,12 +244,12 @@ func (h *ClientDaemonHub) SendFrpcControlCommandAndWait(clientID uint, action st
 		return nil, err
 	}
 
-	log.Printf("[ClientDaemonHub] 等待客户端 %d 的frpc控制结果: key=%s", clientID, key)
+	logger.Debugf("[ClientDaemonHub] 等待客户端 %d 的frpc控制结果: key=%s", clientID, key)
 
 	// 等待结果或超时
 	select {
 	case result := <-resultChan:
-		log.Printf("[ClientDaemonHub] 收到客户端 %d 的frpc控制结果: success=%v", clientID, result.Success)
+		logger.Debugf("[ClientDaemonHub] 收到客户端 %d 的frpc控制结果: success=%v", clientID, result.Success)
 		return result, nil
 	case <-time.After(timeout):
 		return nil, fmt.Errorf("等待frpc控制结果超时")
@@ -265,9 +265,9 @@ func (h *ClientDaemonHub) NotifyFrpcControlResult(clientID uint, success bool, m
 	if exists {
 		select {
 		case resultChan <- &FrpcControlResult{Success: success, Message: message}:
-			log.Printf("[ClientDaemonHub] 已通知frpc控制结果: clientID=%d, success=%v", clientID, success)
+			logger.Debugf("[ClientDaemonHub] 已通知frpc控制结果: clientID=%d, success=%v", clientID, success)
 		default:
-			log.Printf("[ClientDaemonHub] 通知frpc控制结果失败，通道已满: clientID=%d", clientID)
+			logger.Warnf("[ClientDaemonHub] 通知frpc控制结果失败，通道已满: clientID=%d", clientID)
 		}
 	}
 }
@@ -279,7 +279,7 @@ func (h *ClientDaemonHub) SendShutdownCommand(clientID uint) error {
 	h.mu.RUnlock()
 
 	if !exists {
-		log.Printf("[ClientDaemonHub] 客户端 %d 未连接，无法发送停止命令", clientID)
+		logger.Warnf("[ClientDaemonHub] 客户端 %d 未连接，无法发送停止命令", clientID)
 		return fmt.Errorf("客户端 %d 未连接", clientID)
 	}
 
@@ -296,7 +296,7 @@ func (h *ClientDaemonHub) SendShutdownCommand(clientID uint) error {
 
 	select {
 	case conn.Send <- data:
-		log.Printf("[ClientDaemonHub] ✅ 已向客户端 %d 发送停止命令", clientID)
+		logger.Infof("[ClientDaemonHub] 已向客户端 %d 发送停止命令", clientID)
 		return nil
 	default:
 		return fmt.Errorf("发送队列已满，无法发送停止命令")

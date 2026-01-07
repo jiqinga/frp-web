@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
+	"frp-web-panel/internal/logger"
 	"strings"
 
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
@@ -61,7 +61,7 @@ func (s *TencentDNSService) AddRecord(ctx context.Context, fullDomain, ip string
 	// 先检查记录是否已存在
 	existingRecordID, err := s.findRecord(ctx, domain, subdomain, ip)
 	if err == nil && existingRecordID != "" {
-		log.Printf("[腾讯云DNS] DNS 记录已存在: %s -> %s (RecordID: %s)", fullDomain, ip, existingRecordID)
+		logger.Infof("腾讯云DNS DNS 记录已存在: %s -> %s (RecordID: %s)", fullDomain, ip, existingRecordID)
 		return existingRecordID, nil
 	}
 
@@ -80,7 +80,7 @@ func (s *TencentDNSService) AddRecord(ctx context.Context, fullDomain, ip string
 	}
 
 	recordID := fmt.Sprintf("%d", *response.Response.RecordId)
-	log.Printf("[腾讯云DNS] DNS 记录已创建: %s -> %s (RecordID: %s)", fullDomain, ip, recordID)
+	logger.Infof("腾讯云DNS DNS 记录已创建: %s -> %s (RecordID: %s)", fullDomain, ip, recordID)
 	return recordID, nil
 }
 
@@ -127,7 +127,7 @@ func (s *TencentDNSService) UpdateRecord(ctx context.Context, fullDomain, ip, re
 		return fmt.Errorf("更新 DNS 记录失败: %w", err)
 	}
 
-	log.Printf("[腾讯云DNS] DNS 记录已更新: %s -> %s", fullDomain, ip)
+	logger.Infof("腾讯云DNS DNS 记录已更新: %s -> %s", fullDomain, ip)
 	return nil
 }
 
@@ -148,7 +148,7 @@ func (s *TencentDNSService) DeleteRecord(ctx context.Context, fullDomain, record
 		return fmt.Errorf("删除 DNS 记录失败: %w", err)
 	}
 
-	log.Printf("[腾讯云DNS] DNS 记录已删除: %s (RecordID: %s)", fullDomain, recordID)
+	logger.Infof("腾讯云DNS DNS 记录已删除: %s (RecordID: %s)", fullDomain, recordID)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (s *TencentDNSService) TestConnection(ctx context.Context) error {
 		return fmt.Errorf("API 凭证验证失败: %w", err)
 	}
 
-	log.Printf("[腾讯云DNS] API 凭证验证成功")
+	logger.Info("腾讯云DNS API 凭证验证成功")
 	return nil
 }
 
@@ -206,7 +206,7 @@ func (s *TencentDNSService) AddTXTRecord(ctx context.Context, fullDomain, value 
 	}
 
 	recordID := fmt.Sprintf("%d", *response.Response.RecordId)
-	log.Printf("[腾讯云DNS] TXT 记录已创建: %s -> %s (RecordID: %s)", fullDomain, value, recordID)
+	logger.Infof("腾讯云DNS TXT 记录已创建: %s -> %s (RecordID: %s)", fullDomain, value, recordID)
 	return recordID, nil
 }
 
@@ -226,6 +226,6 @@ func (s *TencentDNSService) DeleteTXTRecord(ctx context.Context, fullDomain, rec
 		return fmt.Errorf("删除 TXT 记录失败: %w", err)
 	}
 
-	log.Printf("[腾讯云DNS] TXT 记录已删除: %s (RecordID: %s)", fullDomain, recordID)
+	logger.Infof("腾讯云DNS TXT 记录已删除: %s (RecordID: %s)", fullDomain, recordID)
 	return nil
 }

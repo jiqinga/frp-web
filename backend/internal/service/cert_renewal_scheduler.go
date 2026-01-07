@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
-	"log"
 	"time"
 )
 
@@ -37,14 +37,14 @@ func (s *CertRenewalScheduler) SetEventNotifier(notifier *SystemEventNotifier) {
 
 // Start 启动调度器
 func (s *CertRenewalScheduler) Start() {
-	log.Println("[证书续期] 调度器已启动，检查间隔:", s.interval)
+	logger.Infof("证书续期 调度器已启动，检查间隔: %v", s.interval)
 	go s.run()
 }
 
 // Stop 停止调度器
 func (s *CertRenewalScheduler) Stop() {
 	close(s.stopChan)
-	log.Println("[证书续期] 调度器已停止")
+	logger.Info("证书续期 调度器已停止")
 }
 
 func (s *CertRenewalScheduler) run() {
@@ -65,7 +65,7 @@ func (s *CertRenewalScheduler) run() {
 }
 
 func (s *CertRenewalScheduler) checkAndRenew() {
-	log.Println("[证书续期] 开始检查即将过期的证书...")
+	logger.Info("证书续期 开始检查即将过期的证书...")
 
 	// 更新证书状态
 	s.updateCertificateStatuses()
@@ -73,31 +73,31 @@ func (s *CertRenewalScheduler) checkAndRenew() {
 	// 获取需要续期的证书
 	certs, err := s.certRepo.FindExpiring()
 	if err != nil {
-		log.Printf("[证书续期] ❌ 获取即将过期证书失败: %v", err)
+		logger.Errorf("证书续期 获取即将过期证书失败: %v", err)
 		return
 	}
 
 	if len(certs) == 0 {
-		log.Println("[证书续期] ✅ 没有需要续期的证书")
+		logger.Info("证书续期 没有需要续期的证书")
 		return
 	}
 
-	log.Printf("[证书续期] 发现 %d 个需要续期的证书", len(certs))
+	logger.Infof("证书续期 发现 %d 个需要续期的证书", len(certs))
 
 	for _, cert := range certs {
 		if !cert.AutoRenew {
 			continue
 		}
 
-		log.Printf("[证书续期] 开始续期证书: ID=%d, 域名=%s", cert.ID, cert.Domain)
+		logger.Infof("证书续期 开始续期证书: ID=%d, 域名=%s", cert.ID, cert.Domain)
 		if err := s.acmeService.RenewCertificate(cert.ID); err != nil {
-			log.Printf("[证书续期] ❌ 续期失败: %v", err)
+			logger.Errorf("证书续期 续期失败: %v", err)
 			s.addToRetryQueue(cert.ID)
 			// 记录续签失败日志
 			s.logService.CreateLogAsync(0, "auto_renew", "certificate", cert.ID,
 				fmt.Sprintf("系统自动续签证书失败: %s, 错误: %v", cert.Domain, err), "127.0.0.1")
 		} else {
-			log.Printf("[证书续期] ✅ 续期成功: ID=%d", cert.ID)
+			logger.Infof("证书续期 续期成功: ID=%d", cert.ID)
 			delete(s.retryQueue, cert.ID)
 			// 记录续签成功日志
 			s.logService.CreateLogAsync(0, "auto_renew", "certificate", cert.ID,
@@ -123,25 +123,25 @@ func (s *CertRenewalScheduler) processRetryQueue() {
 		return
 	}
 
-	log.Printf("[证书续期] 处理重试队列，共 %d 个证书", len(s.retryQueue))
+	logger.Infof("证书续期 处理重试队列，共 %d 个证书", len(s.retryQueue))
 
 	for certID, retryCount := range s.retryQueue {
 		if retryCount > 3 {
-			log.Printf("[证书续期] ⚠️ 证书 %d 已达最大重试次数，跳过", certID)
+			logger.Warnf("证书续期 证书 %d 已达最大重试次数，跳过", certID)
 			delete(s.retryQueue, certID)
 			continue
 		}
 
 		// 等待一段时间后重试（指数退避）
 		waitTime := time.Duration(retryCount*30) * time.Minute
-		log.Printf("[证书续期] 证书 %d 将在 %v 后重试（第 %d 次）", certID, waitTime, retryCount)
+		logger.Infof("证书续期 证书 %d 将在 %v 后重试（第 %d 次）", certID, waitTime, retryCount)
 
 		go func(id uint, wait time.Duration) {
 			time.Sleep(wait)
 			if err := s.acmeService.RenewCertificate(id); err != nil {
-				log.Printf("[证书续期] ❌ 重试失败: ID=%d, err=%v", id, err)
+				logger.Errorf("证书续期 重试失败: ID=%d, err=%v", id, err)
 			} else {
-				log.Printf("[证书续期] ✅ 重试成功: ID=%d", id)
+				logger.Infof("证书续期 重试成功: ID=%d", id)
 				delete(s.retryQueue, id)
 			}
 		}(certID, waitTime)
@@ -152,7 +152,7 @@ func (s *CertRenewalScheduler) processRetryQueue() {
 func (s *CertRenewalScheduler) updateCertificateStatuses() {
 	certs, err := s.certRepo.FindAll()
 	if err != nil {
-		log.Printf("[证书续期] ❌ 获取证书列表失败: %v", err)
+		logger.Errorf("证书续期 获取证书列表失败: %v", err)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (s *CertRenewalScheduler) updateCertificateStatuses() {
 			oldStatus := cert.Status
 			cert.Status = newStatus
 			if err := s.certRepo.Update(&cert); err != nil {
-				log.Printf("[证书续期] ⚠️ 更新证书状态失败: ID=%d, %v", cert.ID, err)
+				logger.Warnf("证书续期 更新证书状态失败: ID=%d, %v", cert.ID, err)
 			} else {
 				// 状态变更时发送通知和记录日志
 				if newStatus == model.CertStatusExpiring && oldStatus != model.CertStatusExpiring {

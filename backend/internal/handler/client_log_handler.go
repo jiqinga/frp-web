@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/service"
 	"frp-web-panel/internal/util"
 	"frp-web-panel/internal/websocket"
-	"log"
 	"strconv"
 	"time"
 
@@ -67,7 +67,7 @@ func (h *ClientLogHandler) StartLogStream(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[日志流] 已向客户端 %d 发送开始日志流命令: type=%s, lines=%d", id, req.LogType, req.Lines)
+	logger.Debugf("[日志流] 已向客户端 %d 发送开始日志流命令: type=%s, lines=%d", id, req.LogType, req.Lines)
 	util.Success(c, gin.H{"message": "日志流已启动"})
 }
 
@@ -110,7 +110,7 @@ func (h *ClientLogHandler) StopLogStream(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[日志流] 已向客户端 %d 发送停止日志流命令: type=%s", id, req.LogType)
+	logger.Debugf("[日志流] 已向客户端 %d 发送停止日志流命令: type=%s", id, req.LogType)
 	util.Success(c, gin.H{"message": "日志流已停止"})
 }
 
@@ -164,7 +164,7 @@ func (h *ClientLogHandler) ControlFrpc(c *gin.Context) {
 	h.logService.CreateLogAsync(userID.(uint), "frpc_control", "client", uint(id),
 		"frpc控制: "+clientName+" (操作: "+req.Action+", 结果: "+result.Message+")", c.ClientIP())
 
-	log.Printf("[frpc控制] 客户端 %d 控制完成: action=%s, success=%v", id, req.Action, result.Success)
+	logger.Debugf("[frpc控制] 客户端 %d 控制完成: action=%s, success=%v", id, req.Action, result.Success)
 
 	if result.Success {
 		// 更新客户端的 frpc 在线状态
@@ -175,7 +175,7 @@ func (h *ClientLogHandler) ControlFrpc(c *gin.Context) {
 			newStatus = "online"
 		}
 		if err := h.clientService.UpdateOnlineStatusDirectly(uint(id), newStatus); err != nil {
-			log.Printf("[frpc控制] ⚠️ 更新客户端状态失败: %v", err)
+			logger.Warnf("[frpc控制] 更新客户端状态失败: %v", err)
 		}
 		util.Success(c, gin.H{"success": true, "message": result.Message})
 	} else {

@@ -3,11 +3,12 @@ package service
 import (
 	"fmt"
 	"frp-web-panel/internal/frp"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/pkg/database"
-	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -58,7 +59,7 @@ func NewMetricsCollector(serverRepo *repository.FrpServerRepository) *MetricsCol
 func (c *MetricsCollector) Start() {
 	go c.collectLoop()
 	go c.cleanupLoop()
-	log.Printf("[MetricsCollector] 指标采集服务已启动，采集间隔: %v", c.interval)
+	logger.Infof("MetricsCollector 指标采集服务已启动，采集间隔: %v", c.interval)
 }
 
 // Stop 停止采集
@@ -78,7 +79,7 @@ func (c *MetricsCollector) UpdateInterval(seconds int) {
 	if c.ticker != nil {
 		c.ticker.Reset(c.interval)
 	}
-	log.Printf("[MetricsCollector] 采集间隔已更新为: %v", c.interval)
+	logger.Infof("MetricsCollector 采集间隔已更新为: %v", c.interval)
 }
 
 func (c *MetricsCollector) collectLoop() {
@@ -103,7 +104,7 @@ func (c *MetricsCollector) collectLoop() {
 func (c *MetricsCollector) collectAll() {
 	servers, err := c.serverRepo.GetAll()
 	if err != nil {
-		log.Printf("[MetricsCollector] 获取服务器列表失败: %v", err)
+		logger.Errorf("MetricsCollector 获取服务器列表失败: %v", err)
 		return
 	}
 
@@ -124,7 +125,7 @@ func (c *MetricsCollector) collectOne(server *model.FrpServer) {
 	client := frp.NewFrpsClient(host, server.DashboardPort, server.DashboardUser, server.DashboardPwd)
 	metrics, err := client.GetMetrics()
 	if err != nil {
-		log.Printf("[MetricsCollector] 采集服务器 %d 指标失败: %v", server.ID, err)
+		logger.Errorf("MetricsCollector 采集服务器 %s 指标失败: %v", server.Name, err)
 		return
 	}
 
@@ -147,7 +148,7 @@ func (c *MetricsCollector) collectOne(server *model.FrpServer) {
 	}
 
 	if err := c.metricsRepo.Create(record); err != nil {
-		log.Printf("[MetricsCollector] 保存服务器 %d 指标失败: %v", server.ID, err)
+		logger.Errorf("MetricsCollector 保存服务器 %d 指标失败: %v", server.ID, err)
 	}
 
 	// 处理每个隧道的流量数据
@@ -182,18 +183,25 @@ func (c *MetricsCollector) cleanup() {
 	// 清理服务器指标历史
 	deleted, err := c.metricsRepo.DeleteOlderThan(before)
 	if err != nil {
-		log.Printf("[MetricsCollector] 清理服务器历史数据失败: %v", err)
+		logger.Errorf("MetricsCollector 清理服务器历史数据失败: %v", err)
 	} else {
-		log.Printf("[MetricsCollector] 已清理 %d 条服务器过期指标数据", deleted)
+		logger.Infof("MetricsCollector 已清理 %d 条服务器过期指标数据", deleted)
 	}
 
 	// 清理隧道指标历史
 	deletedProxy, err := c.proxyMetricsRepo.DeleteOlderThan(before)
 	if err != nil {
-		log.Printf("[MetricsCollector] 清理隧道历史数据失败: %v", err)
+		logger.Errorf("MetricsCollector 清理隧道历史数据失败: %v", err)
 	} else {
-		log.Printf("[MetricsCollector] 已清理 %d 条隧道过期指标数据", deletedProxy)
+		logger.Infof("MetricsCollector 已清理 %d 条隧道过期指标数据", deletedProxy)
 	}
+}
+
+// proxyRateUpdate 代理速率更新数据
+type proxyRateUpdate struct {
+	Name    string
+	RateIn  int64
+	RateOut int64
 }
 
 // processProxyTraffics 处理每个隧道的流量数据，计算速率并保存
@@ -208,6 +216,7 @@ func (c *MetricsCollector) processProxyTraffics(serverID uint, traffics []frp.Pr
 	}
 
 	var proxyMetrics []model.ProxyMetricsHistory
+	var rateUpdates []proxyRateUpdate
 
 	for _, pt := range traffics {
 		cacheKey := fmt.Sprintf("%d:%s", serverID, pt.Name)
@@ -250,26 +259,58 @@ func (c *MetricsCollector) processProxyTraffics(serverID uint, traffics []frp.Pr
 			RecordTime: now,
 		})
 
-		// 更新 Proxy 表的实时速率（通过名称匹配）
-		c.updateProxyRate(pt.Name, rateIn, rateOut)
+		// 收集速率更新数据
+		rateUpdates = append(rateUpdates, proxyRateUpdate{
+			Name:    pt.Name,
+			RateIn:  rateIn,
+			RateOut: rateOut,
+		})
 	}
 
 	// 批量保存隧道指标
 	if err := c.proxyMetricsRepo.BatchCreate(proxyMetrics); err != nil {
-		log.Printf("[MetricsCollector] 保存隧道指标失败: %v", err)
+		logger.Errorf("MetricsCollector 保存隧道指标失败: %v", err)
 	}
+
+	// 批量更新 Proxy 表的实时速率
+	c.batchUpdateProxyRates(rateUpdates, now)
 }
 
-// updateProxyRate 更新 Proxy 表的实时速率
-func (c *MetricsCollector) updateProxyRate(proxyName string, rateIn, rateOut int64) {
-	err := database.DB.Model(&model.Proxy{}).
-		Where("name = ?", proxyName).
-		Updates(map[string]interface{}{
-			"current_bytes_in_rate":  rateIn,
-			"current_bytes_out_rate": rateOut,
-			"last_traffic_update":    time.Now(),
-		}).Error
-	if err != nil {
-		log.Printf("[MetricsCollector] 更新隧道 %s 速率失败: %v", proxyName, err)
+// batchUpdateProxyRates 批量更新 Proxy 表的实时速率（使用 CASE WHEN 单条 SQL）
+func (c *MetricsCollector) batchUpdateProxyRates(updates []proxyRateUpdate, now time.Time) {
+	if len(updates) == 0 {
+		return
+	}
+
+	// 构建 CASE WHEN SQL 实现单条语句批量更新
+	var names []string
+	var caseIn, caseOut strings.Builder
+	caseIn.WriteString("CASE name ")
+	caseOut.WriteString("CASE name ")
+
+	for _, u := range updates {
+		names = append(names, u.Name)
+		caseIn.WriteString(fmt.Sprintf("WHEN '%s' THEN %d ", u.Name, u.RateIn))
+		caseOut.WriteString(fmt.Sprintf("WHEN '%s' THEN %d ", u.Name, u.RateOut))
+	}
+	caseIn.WriteString("END")
+	caseOut.WriteString("END")
+
+	// 构建 IN 子句的占位符
+	placeholders := make([]string, len(names))
+	args := make([]interface{}, len(names)+1)
+	for i, name := range names {
+		placeholders[i] = "?"
+		args[i] = name
+	}
+	args[len(names)] = now
+
+	sql := fmt.Sprintf(
+		"UPDATE proxies SET current_bytes_in_rate = %s, current_bytes_out_rate = %s, last_traffic_update = ? WHERE name IN (%s)",
+		caseIn.String(), caseOut.String(), strings.Join(placeholders, ","),
+	)
+
+	if err := database.DB.Exec(sql, args...).Error; err != nil {
+		logger.Errorf("MetricsCollector 批量更新隧道速率失败: %v", err)
 	}
 }

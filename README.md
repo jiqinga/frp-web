@@ -134,7 +134,7 @@ FRP Web Panel 是一个功能强大的 FRP (Fast Reverse Proxy) 可视化管理�
 ### 后端
 | 技术                | 说明     |
 | ------------------- | -------- |
-| Go 1.21+            | 编程语言 |
+| Go 1.24+            | 编程语言 |
 | Gin                 | Web 框架 |
 | GORM                | ORM 框架 |
 | SQLite / PostgreSQL | 数据库   |
@@ -165,7 +165,7 @@ FRP Web Panel 是一个功能强大的 FRP (Fast Reverse Proxy) 可视化管理�
 
 ### 环境要求
 
-- Go 1.21+
+- Go 1.24+
 - Node.js 18+
 - pnpm / npm / yarn
 
@@ -182,12 +182,11 @@ docker run -d \
   --name frp-web-panel \
   -p 80:80 \
   -v ./data:/app/data \
-  -v ./configs:/app/configs \
   --restart unless-stopped \
   jiqinga/frp-web-panel:latest
 ```
 
-#### 方式二：使用 Docker Compose
+#### 方式二：使用 Docker Compose（SQLite）
 
 创建 `docker-compose.yml`:
 
@@ -207,6 +206,7 @@ services:
       - ./data:/app/data       # 数据持久化
       - ./configs:/app/configs # 配置文件
     environment:
+      - LOG_LEVEL=info
       - GIN_MODE=release
       - TZ=Asia/Shanghai
     restart: unless-stopped
@@ -215,6 +215,63 @@ services:
 启动服务:
 ```bash
 docker-compose up -d
+```
+
+#### 方式三：使用 Docker Compose（PostgreSQL）
+
+创建 `docker-compose-postgres.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  frp-web-panel:
+    image: jiqinga/frp-web-panel:latest
+    container_name: frp-web-panel
+    ports:
+      - "80:80"
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    environment:
+      - DATABASE_TYPE=postgres
+      - DATABASE_POSTGRES_HOST=postgres
+      - DATABASE_POSTGRES_PORT=5432
+      - DATABASE_POSTGRES_USER=frp
+      - DATABASE_POSTGRES_PASSWORD=frp123
+      - DATABASE_POSTGRES_DBNAME=frp_panel
+      - JWT_SECRET=your-secret-key-change-in-production
+      - SECURITY_ENCRYPTION_KEY=12345678901234567890123456789012
+      - LOG_LEVEL=info
+      - TZ=Asia/Shanghai
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: frp-panel-postgres
+    environment:
+      - POSTGRES_USER=frp
+      - POSTGRES_PASSWORD=frp123
+      - POSTGRES_DB=frp_panel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U frp -d frp_panel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+```
+
+启动服务:
+```bash
+docker-compose -f docker-compose-postgres.yml up -d
 ```
 
 #### 方式三：本地构建镜像
@@ -232,7 +289,6 @@ docker run -d \
   --name frp-web-panel \
   -p 80:80 \
   -v ./data:/app/data \
-  -v ./configs:/app/configs \
   frp-web-panel:local
 ```
 
@@ -300,6 +356,10 @@ server:
   mode: release           # debug / release
   public_url: 'http://localhost:8080'  # 公网访问地址
 
+log:
+  level: info
+  format: console
+
 database:
   type: sqlite            # sqlite / postgres
   sqlite:
@@ -322,6 +382,8 @@ frps:
   binary_dir: ./data/frps           # frps 二进制文件目录
   config_dir: ./data/frps/configs   # frps 配置文件目录
   log_dir: ./data/frps/logs         # frps 日志目录
+  default_version: latest
+  github_api: https://api.github.com/repos/fatedier/frp
 ```
 
 ### 环境变量
@@ -365,54 +427,51 @@ SECURITY_ENCRYPTION_KEY=your-32-character-encryption-key
 
 ```
 frp-web-panel/
-├── backend/                    # 后端服务
+├── backend/                    # Go 后端服务
 │   ├── cmd/server/            # 程序入口
 │   │   ├── main.go            # 主函数
 │   │   ├── bootstrap.go       # 初始化
 │   │   └── scheduler.go       # 定时任务
 │   ├── configs/               # 配置文件
-│   ├── data/                  # 运行时数据
-│   │   ├── daemon/            # 守护进程二进制
-│   │   └── frps/              # frps 相关文件
+│   ├── data/                  # 运行时数据（IP库等）
+│   ├── docs/                  # Swagger API 文档
 │   ├── internal/              # 内部模块
 │   │   ├── config/            # 配置加载
 │   │   ├── container/         # 依赖注入容器
+│   │   ├── errors/            # 错误定义
+│   │   ├── events/            # 事件总线
+│   │   ├── frp/               # FRP 客户端封装
 │   │   ├── handler/           # HTTP 处理器
+│   │   ├── logger/            # 日志模块
 │   │   ├── middleware/        # 中间件
 │   │   ├── model/             # 数据模型
 │   │   ├── repository/        # 数据访问层
 │   │   ├── router/            # 路由定义
 │   │   ├── service/           # 业务逻辑
-│   │   ├── websocket/         # WebSocket 处理
-│   │   ├── frp/               # FRP 客户端封装
-│   │   └── events/            # 事件总线
-│   ├── migrations/            # 数据库迁移
-│   └── docs/                  # Swagger 文档
-├── web/                       # 前端应用
+│   │   ├── util/              # 工具函数
+│   │   └── websocket/         # WebSocket 处理
+│   ├── migrations/            # 数据库迁移脚本
+│   └── pkg/                   # 可复用包
+├── web/                       # React 前端应用
 │   ├── src/
 │   │   ├── api/              # API 接口封装
+│   │   ├── assets/           # 静态资源
 │   │   ├── components/       # 公共组件
-│   │   ├── pages/            # 页面组件
-│   │   │   ├── Dashboard/    # 仪表盘
-│   │   │   ├── FrpServers/   # 服务器管理
-│   │   │   ├── Clients/      # 客户端管理
-│   │   │   ├── Proxies/      # 代理管理
-│   │   │   ├── Certificates/ # 证书管理
-│   │   │   ├── AlertRules/   # 告警规则
-│   │   │   ├── RealtimeMonitor/ # 实时监控
-│   │   │   ├── Settings/     # 系统设置
-│   │   │   ├── Logs/         # 操作日志
-│   │   │   └── Login/        # 登录页面
-│   │   ├── store/            # 状态管理
+│   │   ├── constants/        # 常量定义
 │   │   ├── hooks/            # 自定义 Hooks
+│   │   ├── pages/            # 页面组件
 │   │   ├── router/           # 路由配置
+│   │   ├── store/            # 状态管理
+│   │   ├── styles/           # 样式文件
 │   │   ├── types/            # TypeScript 类型
 │   │   └── utils/            # 工具函数
 │   └── public/               # 静态资源
+├── docker/                    # Docker 相关配置
+│   └── s6-rc.d/              # s6 进程管理配置
 ├── docs/                      # 项目文档
 │   └── screenshots/          # 截图文件
+├── .github/                   # GitHub 配置
 ├── Dockerfile                 # Docker 构建文件
-├── docker-compose.yml         # Docker Compose 配置
 └── README.md                  # 项目说明
 ```
 

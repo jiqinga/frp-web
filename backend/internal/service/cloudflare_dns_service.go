@@ -8,7 +8,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
+	"frp-web-panel/internal/logger"
 	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -33,7 +33,7 @@ func NewCloudflareDNSService(apiToken string) (*CloudflareDNSService, error) {
 // 智能匹配：从可用 Zones 中找到最长匹配的 Zone
 // 例如：对于 opa.frps.de5.net，如果有 frps.de5.net 和 de5.net，选择 frps.de5.net
 func (s *CloudflareDNSService) getZoneID(ctx context.Context, domain string) (string, error) {
-	log.Printf("[Cloudflare DNS] getZoneID 调用: 完整域名=%s", domain)
+	logger.Debugf("Cloudflare DNS getZoneID 调用: 完整域名=%s", domain)
 
 	// 去除 FQDN 末尾的点（DNS-01 挑战返回的 FQDN 格式为 "_acme-challenge.example.com."）
 	domain = strings.TrimSuffix(domain, ".")
@@ -44,9 +44,9 @@ func (s *CloudflareDNSService) getZoneID(ctx context.Context, domain string) (st
 		return "", fmt.Errorf("获取 Zone 列表失败: %v", err)
 	}
 
-	log.Printf("[Cloudflare DNS] 当前 API Token 可访问的所有 Zones (%d 个):", len(allZones))
+	logger.Debugf("Cloudflare DNS 当前 API Token 可访问的所有 Zones (%d 个):", len(allZones))
 	for i, z := range allZones {
-		log.Printf("[Cloudflare DNS]   [%d] Zone: %s (ID: %s)", i+1, z.Name, z.ID)
+		logger.Debugf("Cloudflare DNS   [%d] Zone: %s (ID: %s)", i+1, z.Name, z.ID)
 	}
 
 	// 智能匹配：找到最长匹配的 Zone
@@ -70,7 +70,7 @@ func (s *CloudflareDNSService) getZoneID(ctx context.Context, domain string) (st
 		return "", fmt.Errorf("未找到域名 %s 对应的 Zone，请确认该域名已在 Cloudflare 中托管且 API Token 有访问权限", domain)
 	}
 
-	log.Printf("[Cloudflare DNS] 智能匹配成功: 域名=%s -> Zone=%s (ID: %s)", domain, bestMatch.Name, bestMatch.ID)
+	logger.Debugf("Cloudflare DNS 智能匹配成功: 域名=%s -> Zone=%s (ID: %s)", domain, bestMatch.Name, bestMatch.ID)
 	return bestMatch.ID, nil
 }
 
@@ -100,7 +100,7 @@ func (s *CloudflareDNSService) AddRecord(ctx context.Context, domain, ip string)
 		return "", fmt.Errorf("添加 DNS 记录失败: %v", err)
 	}
 
-	log.Printf("[Cloudflare DNS] 添加记录成功: %s -> %s, RecordId: %s", domain, ip, resp.ID)
+	logger.Infof("Cloudflare DNS 添加记录成功: %s -> %s, RecordId: %s", domain, ip, resp.ID)
 	return resp.ID, nil
 }
 
@@ -131,7 +131,7 @@ func (s *CloudflareDNSService) UpdateRecord(ctx context.Context, domain, ip, rec
 		return fmt.Errorf("更新 DNS 记录失败: %v", err)
 	}
 
-	log.Printf("[Cloudflare DNS] 更新记录成功: %s -> %s, RecordId: %s", domain, ip, recordID)
+	logger.Infof("Cloudflare DNS 更新记录成功: %s -> %s, RecordId: %s", domain, ip, recordID)
 	return nil
 }
 
@@ -147,7 +147,7 @@ func (s *CloudflareDNSService) DeleteRecord(ctx context.Context, domain, recordI
 		return fmt.Errorf("删除 DNS 记录失败: %v", err)
 	}
 
-	log.Printf("[Cloudflare DNS] 删除记录成功: RecordId: %s", recordID)
+	logger.Infof("Cloudflare DNS 删除记录成功: RecordId: %s", recordID)
 	return nil
 }
 
@@ -194,7 +194,7 @@ func (s *CloudflareDNSService) AddTXTRecord(ctx context.Context, domain, value s
 		return "", fmt.Errorf("添加 TXT 记录失败: %v", err)
 	}
 
-	log.Printf("[Cloudflare DNS] 添加 TXT 记录成功: %s -> %s, RecordId: %s", domain, value, resp.ID)
+	logger.Infof("Cloudflare DNS 添加 TXT 记录成功: %s -> %s, RecordId: %s", domain, value, resp.ID)
 	return resp.ID, nil
 }
 
@@ -210,6 +210,6 @@ func (s *CloudflareDNSService) DeleteTXTRecord(ctx context.Context, domain, reco
 		return fmt.Errorf("删除 TXT 记录失败: %v", err)
 	}
 
-	log.Printf("[Cloudflare DNS] 删除 TXT 记录成功: RecordId: %s", recordID)
+	logger.Infof("Cloudflare DNS 删除 TXT 记录成功: RecordId: %s", recordID)
 	return nil
 }

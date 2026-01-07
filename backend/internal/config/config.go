@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:21:43
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-29 16:50:01
+ * @LastEditTime        : 2026-01-07 13:58:44
  * @FilePath            : frp-web-testbackendinternalconfigconfig.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -12,7 +12,7 @@ package config
 import (
 	"errors"
 	"fmt"
-	"log"
+	"frp-web-panel/internal/logger"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,18 +22,21 @@ import (
 
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
+	Log      LogConfig      `mapstructure:"log"`
 	Database DatabaseConfig `mapstructure:"database"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Security SecurityConfig `mapstructure:"security"`
 	Frps     FrpsConfig     `mapstructure:"frps"`
-	FRP      FRPConfig      `mapstructure:"frp"`
-	Log      LogConfig      `mapstructure:"log"`
+}
+
+type LogConfig struct {
+	Level  string `mapstructure:"level"`
+	Format string `mapstructure:"format"`
 }
 
 type ServerConfig struct {
-	Port      int    `mapstructure:"port"`
-	Mode      string `mapstructure:"mode"`
-	PublicURL string `mapstructure:"public_url"`
+	Port int    `mapstructure:"port"`
+	Mode string `mapstructure:"mode"`
 }
 
 type DatabaseConfig struct {
@@ -64,33 +67,17 @@ type SecurityConfig struct {
 }
 
 type FrpsConfig struct {
-	ConfigPath     string `mapstructure:"config_path"`
 	BinaryDir      string `mapstructure:"binary_dir"`
 	ConfigDir      string `mapstructure:"config_dir"`
-	LogDir         string `mapstructure:"log_dir"`
 	DefaultVersion string `mapstructure:"default_version"`
 	GithubAPI      string `mapstructure:"github_api"`
-}
-
-type FRPConfig struct {
-	Client FRPClientConfig `mapstructure:"client"`
-}
-
-type FRPClientConfig struct {
-	Timeout       string `mapstructure:"timeout"`
-	RetryTimes    int    `mapstructure:"retry_times"`
-	RetryInterval string `mapstructure:"retry_interval"`
-}
-
-type LogConfig struct {
-	Level string `mapstructure:"level"`
-	File  string `mapstructure:"file"`
 }
 
 var GlobalConfig *Config
 
 func LoadConfig(path string) error {
 	viper.SetConfigFile(path)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
@@ -172,9 +159,9 @@ func (c *Config) Validate() error {
 // warnDefaultSensitiveValues 检查敏感配置是否使用默认值并输出警告
 func (c *Config) warnDefaultSensitiveValues() {
 	if c.JWT.Secret == defaultSensitiveValues["jwt_secret"] {
-		log.Println("[WARNING] jwt.secret is using default value, please change it in production!")
+		logger.Warn("jwt.secret is using default value, please change it in production!")
 	}
 	if c.Security.EncryptionKey == defaultSensitiveValues["encryption_key"] {
-		log.Println("[WARNING] security.encryption_key is using default value, please change it in production!")
+		logger.Warn("security.encryption_key is using default value, please change it in production!")
 	}
 }

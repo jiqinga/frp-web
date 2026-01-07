@@ -1,9 +1,9 @@
 package service
 
 import (
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/internal/websocket"
-	"log"
 	"sync"
 	"time"
 )
@@ -58,7 +58,7 @@ func (q *CertSyncQueue) SetDaemonHub(hub *websocket.ClientDaemonHub) {
 				go q.SyncPendingCerts(clientID)
 			}
 		})
-		log.Printf("[CertSyncQueue] 已注册客户端上线回调")
+		logger.Info("CertSyncQueue 已注册客户端上线回调")
 	}
 }
 
@@ -79,7 +79,7 @@ func (q *CertSyncQueue) AddPendingSync(clientID uint, domain, certPEM, keyPEM st
 				CreatedAt: time.Now(),
 			}
 			q.queue[clientID] = pending
-			log.Printf("[CertSyncQueue] 更新待同步证书: clientID=%d, domain=%s", clientID, domain)
+			logger.Infof("CertSyncQueue 更新待同步证书: clientID=%d, domain=%s", clientID, domain)
 			return
 		}
 	}
@@ -92,7 +92,7 @@ func (q *CertSyncQueue) AddPendingSync(clientID uint, domain, certPEM, keyPEM st
 		KeyPEM:    keyPEM,
 		CreatedAt: time.Now(),
 	})
-	log.Printf("[CertSyncQueue] 添加待同步证书: clientID=%d, domain=%s", clientID, domain)
+	logger.Infof("CertSyncQueue 添加待同步证书: clientID=%d, domain=%s", clientID, domain)
 }
 
 // SyncPendingCerts 同步待处理的证书到客户端
@@ -110,19 +110,19 @@ func (q *CertSyncQueue) SyncPendingCerts(clientID uint) {
 	q.mu.Unlock()
 
 	if q.daemonHub == nil {
-		log.Printf("[CertSyncQueue] DaemonHub 未设置，无法同步证书")
+		logger.Warn("CertSyncQueue DaemonHub 未设置，无法同步证书")
 		return
 	}
 
-	log.Printf("[CertSyncQueue] 开始同步 %d 个待处理证书到客户端 %d", len(toSync), clientID)
+	logger.Infof("CertSyncQueue 开始同步 %d 个待处理证书到客户端 %d", len(toSync), clientID)
 
 	for _, cert := range toSync {
 		if err := q.daemonHub.PushCertSync(clientID, cert.Domain, cert.CertPEM, cert.KeyPEM); err != nil {
-			log.Printf("[CertSyncQueue] ❌ 同步证书失败: clientID=%d, domain=%s, err=%v", clientID, cert.Domain, err)
+			logger.Errorf("CertSyncQueue 同步证书失败: clientID=%d, domain=%s, err=%v", clientID, cert.Domain, err)
 			// 重新加入队列
 			q.AddPendingSync(clientID, cert.Domain, cert.CertPEM, cert.KeyPEM)
 		} else {
-			log.Printf("[CertSyncQueue] ✅ 同步证书成功: clientID=%d, domain=%s", clientID, cert.Domain)
+			logger.Infof("CertSyncQueue 同步证书成功: clientID=%d, domain=%s", clientID, cert.Domain)
 		}
 		// 避免发送过快
 		time.Sleep(100 * time.Millisecond)

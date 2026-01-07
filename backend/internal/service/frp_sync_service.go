@@ -3,10 +3,10 @@ package service
 import (
 	"fmt"
 	"frp-web-panel/internal/frp"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/pkg/database"
-	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -47,7 +47,7 @@ func (s *FrpSyncService) Start() {
 	go s.syncLoop(serverInfoInterval, s.syncServerInfo)
 	go s.syncLoop(proxyStatusInterval, s.syncProxyStatus)
 
-	log.Println("FRP同步服务已启动")
+	logger.Info("FRP同步服务已启动")
 }
 
 func (s *FrpSyncService) getIntervalSetting(key string, defaultVal int) time.Duration {
@@ -82,22 +82,22 @@ func (s *FrpSyncService) syncLoop(interval time.Duration, syncFunc func()) {
 func (s *FrpSyncService) syncServerInfo() {
 	servers, err := s.frpServerRepo.GetEnabled()
 	if err != nil {
-		log.Printf("获取已启用的FRP服务器失败: %v", err)
+		logger.Errorf("获取已启用的FRP服务器失败: %v", err)
 		return
 	}
 
-	log.Printf("[DEBUG] 同步服务获取到 %d 个启用的服务器", len(servers))
+	logger.Debugf("同步服务获取到 %d 个启用的服务器", len(servers))
 	for _, server := range servers {
-		log.Printf("[DEBUG] 服务器 %s: enabled=%v, status=%s", server.Name, server.Enabled, server.Status)
+		logger.Debugf("服务器 %s: enabled=%v, status=%s", server.Name, server.Enabled, server.Status)
 
 		// 跳过已停止的服务器
 		if server.Status == model.StatusStopped || server.Status == model.StatusStopping {
-			log.Printf("[DEBUG] 跳过已停止的服务器: %s (status=%s)", server.Name, server.Status)
+			logger.Debugf("跳过已停止的服务器: %s (status=%s)", server.Name, server.Status)
 			continue
 		}
 
 		if err := s.syncSingleServer(&server); err != nil {
-			log.Printf("同步服务器 %s 失败: %v", server.Name, err)
+			logger.Errorf("同步服务器 %s 失败: %v", server.Name, err)
 			server.LastError = err.Error()
 		} else {
 			server.LastError = ""
@@ -115,13 +115,13 @@ func (s *FrpSyncService) syncSingleServer(server *model.FrpServer) error {
 		host = server.SSHHost
 	}
 
-	log.Printf("[DEBUG] 同步服务器 %s: type=%s, host=%s, dashboard_port=%d, user=%s",
+	logger.Debugf("同步服务器 %s: type=%s, host=%s, dashboard_port=%d, user=%s",
 		server.Name, server.ServerType, host, server.DashboardPort, server.DashboardUser)
 
 	client := frp.NewFrpsClient(host, server.DashboardPort, server.DashboardUser, server.DashboardPwd)
 
 	if err := client.HealthCheck(); err != nil {
-		log.Printf("[ERROR] 服务器 %s 健康检查失败: %v", server.Name, err)
+		logger.Errorf("服务器 %s 健康检查失败: %v", server.Name, err)
 		return err
 	}
 
@@ -130,7 +130,7 @@ func (s *FrpSyncService) syncSingleServer(server *model.FrpServer) error {
 		return err
 	}
 
-	log.Printf("服务器 %s: 客户端数=%d, 连接数=%d", server.Name, info.ClientCounts, info.CurConns)
+	logger.Infof("服务器 %s: 客户端数=%d, 连接数=%d", server.Name, info.ClientCounts, info.CurConns)
 	return nil
 }
 
@@ -140,13 +140,13 @@ func (s *FrpSyncService) syncProxyStatus() {
 		return
 	}
 
-	log.Printf("[DEBUG] 代理同步获取到 %d 个启用的服务器", len(servers))
+	logger.Debugf("代理同步获取到 %d 个启用的服务器", len(servers))
 	for _, server := range servers {
-		log.Printf("[DEBUG] 代理同步 - 服务器 %s: enabled=%v, status=%s", server.Name, server.Enabled, server.Status)
+		logger.Debugf("代理同步 - 服务器 %s: enabled=%v, status=%s", server.Name, server.Enabled, server.Status)
 
 		// 跳过已停止的服务器
 		if server.Status == model.StatusStopped || server.Status == model.StatusStopping {
-			log.Printf("[DEBUG] 跳过已停止的服务器代理同步: %s (status=%s)", server.Name, server.Status)
+			logger.Debugf("跳过已停止的服务器代理同步: %s (status=%s)", server.Name, server.Status)
 			continue
 		}
 
@@ -161,18 +161,18 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 		host = server.SSHHost
 	}
 
-	log.Printf("[DEBUG syncServerProxies] 开始同步服务器 %s (ID:%d) 的代理", server.Name, server.ID)
+	logger.Debugf("syncServerProxies 开始同步服务器 %s (ID:%d) 的代理", server.Name, server.ID)
 
 	// 首先获取关联到该服务器的所有客户端
 	clients, err := s.clientRepo.FindByFrpServerID(server.ID)
 	if err != nil {
-		log.Printf("[DEBUG syncServerProxies] 获取服务器 %s 关联的客户端失败: %v", server.Name, err)
+		logger.Debugf("syncServerProxies 获取服务器 %s 关联的客户端失败: %v", server.Name, err)
 		return
 	}
-	log.Printf("[DEBUG syncServerProxies] 服务器 %s 关联了 %d 个客户端", server.Name, len(clients))
+	logger.Debugf("syncServerProxies 服务器 %s 关联了 %d 个客户端", server.Name, len(clients))
 
 	if len(clients) == 0 {
-		log.Printf("[DEBUG syncServerProxies] 服务器 %s 没有关联的客户端，跳过同步", server.Name)
+		logger.Debugf("syncServerProxies 服务器 %s 没有关联的客户端，跳过同步", server.Name)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 	for i, c := range clients {
 		clientIDs[i] = c.ID
 		clientIDToName[c.ID] = c.Name
-		log.Printf("[DEBUG syncServerProxies]   - 客户端: %s (ID:%d)", c.Name, c.ID)
+		logger.Debugf("syncServerProxies   - 客户端: %s (ID:%d)", c.Name, c.ID)
 	}
 
 	// 获取这些客户端的代理
@@ -190,12 +190,12 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 	for _, clientID := range clientIDs {
 		proxies, err := s.proxyRepo.FindByClientID(clientID)
 		if err != nil {
-			log.Printf("[DEBUG syncServerProxies] 获取客户端 %d 的代理失败: %v", clientID, err)
+			logger.Debugf("syncServerProxies 获取客户端 %d 的代理失败: %v", clientID, err)
 			continue
 		}
 		dbProxies = append(dbProxies, proxies...)
 	}
-	log.Printf("[DEBUG syncServerProxies] 数据库中这些客户端共有 %d 个代理", len(dbProxies))
+	logger.Debugf("syncServerProxies 数据库中这些客户端共有 %d 个代理", len(dbProxies))
 
 	// 构建多种格式的代理名称到代理的映射
 	// FRP 服务器上的代理名称格式可能是:
@@ -213,7 +213,7 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 		fullName := clientName + "." + proxy.Name
 		proxyMap[fullName] = proxy
 
-		log.Printf("[DEBUG syncServerProxies]   - 数据库代理: %s (ID:%d, ClientID:%d, 全名:%s)",
+		logger.Debugf("syncServerProxies   - 数据库代理: %s (ID:%d, ClientID:%d, 全名:%s)",
 			proxy.Name, proxy.ID, proxy.ClientID, fullName)
 	}
 
@@ -223,17 +223,17 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 	// 使用 GetAllProxies 获取所有类型的代理
 	allProxies, err := client.GetAllProxies()
 	if err != nil {
-		log.Printf("从服务器 %s 获取所有代理失败: %v", server.Name, err)
+		logger.Errorf("从服务器 %s 获取所有代理失败: %v", server.Name, err)
 		return
 	}
 
-	log.Printf("[DEBUG syncServerProxies] 服务器 %s 获取到代理类型分布:", server.Name)
+	logger.Debugf("syncServerProxies 服务器 %s 获取到代理类型分布:", server.Name)
 	totalProxies := 0
 	for proxyType, proxies := range allProxies {
-		log.Printf("[DEBUG syncServerProxies]   - %s: %d 个代理", proxyType, len(proxies))
+		logger.Debugf("syncServerProxies   - %s: %d 个代理", proxyType, len(proxies))
 		totalProxies += len(proxies)
 	}
-	log.Printf("[DEBUG syncServerProxies] FRP服务器返回总计: %d 个代理", totalProxies)
+	logger.Debugf("syncServerProxies FRP服务器返回总计: %d 个代理", totalProxies)
 
 	updatedCount := 0
 	onlineCount := 0
@@ -242,7 +242,7 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 			// 尝试匹配代理名称（支持直接名称和带前缀的名称）
 			proxy, exists := proxyMap[proxyInfo.Name]
 			if !exists {
-				log.Printf("[DEBUG syncServerProxies] 代理 %s (类型:%s) 不属于该服务器的客户端，跳过", proxyInfo.Name, proxyType)
+				logger.Debugf("syncServerProxies 代理 %s (类型:%s) 不属于该服务器的客户端，跳过", proxyInfo.Name, proxyType)
 				continue
 			}
 
@@ -264,13 +264,13 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 				// 获取历史流量数据计算速率
 				trafficData, err := client.GetProxyTraffic(proxyInfo.Name)
 				if err != nil {
-					log.Printf("[DEBUG syncServerProxies] 获取代理 %s 流量数据失败: %v", proxyInfo.Name, err)
+					logger.Debugf("syncServerProxies 获取代理 %s 流量数据失败: %v", proxyInfo.Name, err)
 				} else {
 					// 计算速率：使用最后两个数据点的差值
 					inRate, outRate := calculateRateFromHistory(trafficData.TrafficIn, trafficData.TrafficOut)
 					proxy.CurrentBytesInRate = inRate
 					proxy.CurrentBytesOutRate = outRate
-					log.Printf("[DEBUG syncServerProxies] 代理 %s 速率: in=%d B/s, out=%d B/s", proxyInfo.Name, inRate, outRate)
+					logger.Debugf("syncServerProxies 代理 %s 速率: in=%d B/s, out=%d B/s", proxyInfo.Name, inRate, outRate)
 				}
 			} else {
 				// 离线代理速率为0
@@ -280,11 +280,11 @@ func (s *FrpSyncService) syncServerProxies(server *model.FrpServer) {
 
 			s.proxyRepo.Update(proxy)
 			updatedCount++
-			log.Printf("[DEBUG syncServerProxies] 更新代理 %s -> %s: 类型=%s, 状态=%s, LastOnlineTime=%v",
+			logger.Debugf("syncServerProxies 更新代理 %s -> %s: 类型=%s, 状态=%s, LastOnlineTime=%v",
 				proxyInfo.Name, proxy.Name, proxyType, proxyInfo.Status, proxy.LastOnlineTime)
 		}
 	}
-	log.Printf("[DEBUG syncServerProxies] 服务器 %s 同步完成: 更新了 %d 个代理, 其中 %d 个在线",
+	logger.Debugf("syncServerProxies 服务器 %s 同步完成: 更新了 %d 个代理, 其中 %d 个在线",
 		server.Name, updatedCount, onlineCount)
 }
 
@@ -330,12 +330,12 @@ func (s *FrpSyncService) calculateTrafficDelta(serverID uint, proxyName string, 
 
 		// 检测 frps 重启：当前值 < 上次值
 		if deltaIn < 0 {
-			log.Printf("[TrafficDelta] 检测到 frps 重启 (proxy=%s): TrafficIn 从 %d 变为 %d，使用当前值作为增量",
+			logger.Infof("TrafficDelta 检测到 frps 重启 (proxy=%s): TrafficIn 从 %d 变为 %d，使用当前值作为增量",
 				proxyName, last.TrafficIn, currentIn)
 			deltaIn = currentIn
 		}
 		if deltaOut < 0 {
-			log.Printf("[TrafficDelta] 检测到 frps 重启 (proxy=%s): TrafficOut 从 %d 变为 %d，使用当前值作为增量",
+			logger.Infof("TrafficDelta 检测到 frps 重启 (proxy=%s): TrafficOut 从 %d 变为 %d，使用当前值作为增量",
 				proxyName, last.TrafficOut, currentOut)
 			deltaOut = currentOut
 		}
@@ -343,7 +343,7 @@ func (s *FrpSyncService) calculateTrafficDelta(serverID uint, proxyName string, 
 		// 首次采集，不累加（避免把历史累计值当作增量）
 		deltaIn = 0
 		deltaOut = 0
-		log.Printf("[TrafficDelta] 首次采集 proxy=%s: 记录基准值 in=%d, out=%d", proxyName, currentIn, currentOut)
+		logger.Debugf("TrafficDelta 首次采集 proxy=%s: 记录基准值 in=%d, out=%d", proxyName, currentIn, currentOut)
 	}
 
 	// 更新缓存

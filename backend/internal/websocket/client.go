@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-17 16:16:48
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-29 16:49:32
+ * @LastEditTime        : 2026-01-07 10:56:43
  * @FilePath            : frp-web-testbackendinternalwebsocketclient.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -10,7 +10,7 @@
 package websocket
 
 import (
-	"log"
+	"frp-web-panel/internal/logger"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -44,8 +44,13 @@ func (c *Client) ReadPump() {
 	for {
 		_, _, err := c.Conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket错误: %v", err)
+			if websocket.IsUnexpectedCloseError(err,
+				websocket.CloseNormalClosure,    // 1000 - 正常关闭
+				websocket.CloseGoingAway,        // 1001 - 页面离开
+				websocket.CloseNoStatusReceived, // 1005 - 无状态关闭（浏览器直接关闭）
+				websocket.CloseAbnormalClosure,  // 1006 - 异常关闭
+			) {
+				logger.Errorf("WebSocket错误: %v", err)
 			}
 			break
 		}

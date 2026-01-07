@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"log"
+	"frp-web-panel/internal/logger"
 	"sync"
 	"time"
 )
@@ -38,7 +38,7 @@ func (t *PeriodicTask) Start(ctx context.Context) {
 		case <-ticker.C:
 			t.fn()
 		case <-ctx.Done():
-			log.Printf("[TaskManager] 定时任务 %s 已停止", t.name)
+			logger.Infof("TaskManager 定时任务 %s 已停止", t.name)
 			return
 		}
 	}
@@ -58,7 +58,7 @@ func (t *OneShotTask) Name() string { return t.name }
 
 func (t *OneShotTask) Start(ctx context.Context) {
 	t.fn(ctx)
-	log.Printf("[TaskManager] 一次性任务 %s 已完成", t.name)
+	logger.Infof("TaskManager 一次性任务 %s 已完成", t.name)
 }
 
 // TaskManager 统一管理所有后台 goroutine
@@ -106,16 +106,16 @@ func (m *TaskManager) Start() {
 		m.wg.Add(1)
 		go func(t Task) {
 			defer m.wg.Done()
-			log.Printf("[TaskManager] 启动任务: %s", t.Name())
+			logger.Infof("TaskManager 启动任务: %s", t.Name())
 			t.Start(m.ctx)
 		}(task)
 	}
-	log.Printf("[TaskManager] 已启动 %d 个任务", len(m.tasks))
+	logger.Infof("TaskManager 已启动 %d 个任务", len(m.tasks))
 }
 
 // Shutdown 优雅关闭所有任务
 func (m *TaskManager) Shutdown(timeout time.Duration) error {
-	log.Println("[TaskManager] 开始关闭所有任务...")
+	logger.Info("TaskManager 开始关闭所有任务...")
 	m.cancel()
 
 	done := make(chan struct{})
@@ -126,10 +126,10 @@ func (m *TaskManager) Shutdown(timeout time.Duration) error {
 
 	select {
 	case <-done:
-		log.Println("[TaskManager] 所有任务已优雅关闭")
+		logger.Info("TaskManager 所有任务已优雅关闭")
 		return nil
 	case <-time.After(timeout):
-		log.Println("[TaskManager] 关闭超时，部分任务可能未完全停止")
+		logger.Warn("TaskManager 关闭超时，部分任务可能未完全停止")
 		return context.DeadlineExceeded
 	}
 }

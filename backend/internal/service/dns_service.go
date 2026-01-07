@@ -3,10 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/pkg/database"
-	"log"
 	"time"
 )
 
@@ -103,9 +103,9 @@ func (s *DNSService) SyncDNSRecord(proxy *model.Proxy, frpServerID *uint) error 
 	// 先检查是否已存在该代理的DNS记录，如果存在则先删除
 	existingRecord, _ := s.recordRepo.FindByProxyID(proxy.ID)
 	if existingRecord != nil && existingRecord.RecordID != "" {
-		log.Printf("[DNS] 发现已存在的DNS记录，先删除旧记录: %s", existingRecord.RecordID)
+		logger.Infof("DNS 发现已存在的DNS记录，先删除旧记录: %s", existingRecord.RecordID)
 		if err := operator.DeleteRecord(ctx, existingRecord.Domain, existingRecord.RecordID); err != nil {
-			log.Printf("[DNS] 删除旧记录失败: %v", err)
+			logger.Warnf("DNS 删除旧记录失败: %v", err)
 		}
 		s.recordRepo.DeleteByProxyID(proxy.ID)
 	}
@@ -170,7 +170,7 @@ func (s *DNSService) DeleteDNSRecord(proxyID uint) error {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 				if err := operator.DeleteRecord(ctx, record.Domain, record.RecordID); err != nil {
-					log.Printf("[DNS] 删除DNS记录失败: %v", err)
+					logger.Warnf("DNS 删除DNS记录失败: %v", err)
 				}
 			}
 		}
@@ -190,21 +190,21 @@ func (s *DNSService) GetServerIP(frpServerID *uint) (string, error) {
 	}
 
 	// 调试日志：打印服务器信息
-	log.Printf("[DNS GetServerIP] 服务器ID=%d, Name=%s, ServerType=%s, Host=%s, SSHHost=%s",
+	logger.Debugf("DNS GetServerIP 服务器ID=%d, Name=%s, ServerType=%s, Host=%s, SSHHost=%s",
 		server.ID, server.Name, server.ServerType, server.Host, server.SSHHost)
 
 	// 如果 Host 为空或为 0.0.0.0，尝试使用 SSHHost
 	host := server.Host
 	if host == "" || host == "0.0.0.0" {
 		if server.SSHHost != "" {
-			log.Printf("[DNS GetServerIP] Host 为空或 0.0.0.0，回退使用 SSHHost: %s", server.SSHHost)
+			logger.Debugf("DNS GetServerIP Host 为空或 0.0.0.0，回退使用 SSHHost: %s", server.SSHHost)
 			host = server.SSHHost
 		} else {
-			log.Printf("[DNS GetServerIP] ⚠️ Host 和 SSHHost 都为空或无效！")
+			logger.Warn("DNS GetServerIP Host 和 SSHHost 都为空或无效！")
 		}
 	}
 
-	log.Printf("[DNS GetServerIP] 最终返回的IP: %s", host)
+	logger.Debugf("DNS GetServerIP 最终返回的IP: %s", host)
 	return host, nil
 }
 

@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 16:25:18
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-30 17:08:34
+ * @LastEditTime        : 2026-01-07 10:58:25
  * @FilePath            : frp-web-testbackendinternalhandlerwebsocket_handler.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -10,8 +10,8 @@
 package handler
 
 import (
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/websocket"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -46,17 +46,17 @@ func NewWebSocketHandler(hub *websocket.Hub) *WebSocketHandler {
 // @Failure 401 {string} string "认证失败"
 // @Router /api/ws/realtime [get]
 func (h *WebSocketHandler) HandleConnection(c *gin.Context) {
-	log.Println("[WebSocket] 收到连接请求")
-	log.Println("[WebSocket] Token:", c.Query("token"))
-	log.Println("[WebSocket] Authorization Header:", c.GetHeader("Authorization"))
+	logger.Debug("[WebSocket] 收到连接请求")
+	logger.Debugf("[WebSocket] Token: %s", c.Query("token"))
+	logger.Debugf("[WebSocket] Authorization Header: %s", c.GetHeader("Authorization"))
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println("[WebSocket] 升级失败:", err)
+		logger.Errorf("[WebSocket] 升级失败: %v", err)
 		return
 	}
 
-	log.Println("[WebSocket] 连接升级成功")
+	logger.Debug("[WebSocket] 连接升级成功")
 
 	client := &websocket.Client{
 		Hub:  h.hub,
@@ -65,7 +65,7 @@ func (h *WebSocketHandler) HandleConnection(c *gin.Context) {
 	}
 
 	h.hub.Register <- client
-	log.Println("[WebSocket] 客户端已注册到Hub")
+	logger.Debug("[WebSocket] 客户端已注册到Hub")
 
 	go client.WritePump()
 	go client.ReadPump()

@@ -1,8 +1,17 @@
+/*
+ * @Author              : 寂情啊
+ * @Date                : 2025-12-31 16:41:12
+ * @LastEditors         : 寂情啊
+ * @LastEditTime        : 2026-01-07 10:58:37
+ * @FilePath            : frp-web-testbackendinternalhandlerlog_ws_handler.go
+ * @Description         : 说明
+ * 倾尽绿蚁花尽开，问潭底剑仙安在哉
+ */
 package handler
 
 import (
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/websocket"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -42,11 +51,11 @@ func (h *LogWSHandler) HandleConnection(c *gin.Context) {
 
 	conn, err := logUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("[LogWS] 升级失败: %v", err)
+		logger.Errorf("[LogWS] 升级失败: %v", err)
 		return
 	}
 
-	log.Printf("[LogWS] 前端连接成功，clientID=%d", clientID)
+	logger.Debugf("[LogWS] 前端连接成功，clientID=%d", clientID)
 
 	client := &websocket.LogWSClient{
 		ClientID: uint(clientID),

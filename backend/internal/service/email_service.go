@@ -3,7 +3,7 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
+	"frp-web-panel/internal/logger"
 	"net/smtp"
 	"strconv"
 )
@@ -113,7 +113,7 @@ func (s *EmailService) TestEmail(to string) error {
 		return fmt.Errorf("获取邮件配置失败: %w", err)
 	}
 
-	log.Printf("[邮件测试] 配置: Host=%s, Port=%s, SSL=%v, From=%s",
+	logger.Infof("邮件测试 配置: Host=%s, Port=%s, SSL=%v, From=%s",
 		config.Host, config.Port, config.SSL, config.From)
 
 	subject := "FRP Panel 邮件测试"

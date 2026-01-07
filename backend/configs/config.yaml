@@ -1,7 +1,10 @@
 server:
     port: 8080
-    mode: debug
-    public_url: 'http://localhost:8080'
+    mode: release
+
+log:
+    level: info
+    format: console
 
 database:
     type: sqlite
@@ -22,19 +25,7 @@ security:
     encryption_key: '12345678901234567890123456789012'
 
 frps:
-    config_path: ./configs/frps.ini
     binary_dir: ./data/frps
     config_dir: ./data/frps/configs
-    log_dir: ./data/frps/logs
     default_version: latest
     github_api: https://api.github.com/repos/fatedier/frp
-
-frp:
-    client:
-        timeout: 10s
-        retry_times: 3
-        retry_interval: 2s
-
-log:
-    level: info
-    file: ./logs/app.log

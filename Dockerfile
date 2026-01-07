@@ -16,9 +16,40 @@ RUN go mod download
 COPY backend/ ./
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o server ./cmd/server
 
-# Stage 3: 最终运行镜像
+# Stage 3: 构建 daemon 守护程序（多平台）
+FROM golang:1.24-alpine AS daemon-builder
+WORKDIR /app
+COPY frpc-daemon-ws/go.mod frpc-daemon-ws/go.sum ./
+RUN go mod download
+COPY frpc-daemon-ws/ ./
+# 获取构建时间作为版本号
+RUN BUILD_TIME=$(date +%Y%m%d-%H%M%S) && \
+    LDFLAGS="-s -w -X main.BuildTime=${BUILD_TIME}" && \
+    mkdir -p /output && \
+    GOOS=linux GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-amd64 && \
+    GOOS=linux GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-arm64 && \
+    GOOS=linux GOARCH=arm go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-arm && \
+    GOOS=windows GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-windows-amd64.exe && \
+    GOOS=windows GOARCH=386 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-windows-386.exe && \
+    GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-darwin-amd64 && \
+    GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-darwin-arm64
+
+# Stage 4: 最终运行镜像
 FROM alpine:3.19
-RUN apk add --no-cache nginx ca-certificates tzdata sqlite-libs \
+
+# 设置默认时区
+ENV TZ=Asia/Shanghai
+
+ARG TARGETARCH
+ARG S6_OVERLAY_VERSION=3.2.0.2
+
+# 安装 s6-overlay
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${TARGETARCH}.tar.xz /tmp
+RUN apk add --no-cache nginx ca-certificates tzdata sqlite-libs xz curl \
+    && tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-${TARGETARCH}.tar.xz \
+    && rm -f /tmp/s6-overlay-*.tar.xz \
     && mkdir -p /app/data /app/data/daemon /app/configs /var/run/nginx /usr/share/nginx/html
 
 WORKDIR /app
@@ -36,12 +67,20 @@ COPY web/nginx.conf /etc/nginx/http.d/default.conf
 # 复制数据文件
 COPY backend/data/ip2region_v4.xdb /app/data/ip2region_v4.xdb
 
-# 创建启动脚本
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'nginx' >> /app/start.sh && \
-    echo 'exec /app/server' >> /app/start.sh && \
-    chmod +x /app/start.sh
+# 复制 daemon 守护程序二进制文件
+COPY --from=daemon-builder /output/ /app/data/daemon/
+
+# 复制 s6-overlay 服务定义
+COPY docker/s6-rc.d /etc/s6-overlay/s6-rc.d
+
+# 设置脚本执行权限
+RUN chmod +x /etc/s6-overlay/s6-rc.d/nginx/run \
+    && chmod +x /etc/s6-overlay/s6-rc.d/server/run
 
 EXPOSE 80
 
-CMD ["/app/start.sh"]
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/api/health || exit 1
+
+ENTRYPOINT ["/init"]

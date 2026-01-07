@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/pkg/database"
@@ -90,41 +91,41 @@ func (s *ClientRegisterService) GenerateScript(token string, scriptType string, 
 
 // GetInstallScript 获取安装脚本内容
 func (s *ClientRegisterService) GetInstallScript(token string, scriptType string, mirrorID uint) (string, error) {
-	fmt.Printf("[GetInstallScript] ========================================\n")
-	fmt.Printf("[GetInstallScript] 请求参数 - Token: %s, Type: %s, MirrorID: %d\n", token, scriptType, mirrorID)
+	logger.Debug("[GetInstallScript] ========================================")
+	logger.Debugf("[GetInstallScript] 请求参数 - Token: %s, Type: %s, MirrorID: %d", token, scriptType, mirrorID)
 
 	t, err := s.tokenRepo.FindByToken(token)
 	if err != nil {
-		fmt.Printf("[GetInstallScript] ❌ Token查找失败: %v\n", err)
+		logger.Debugf("[GetInstallScript] ❌ Token查找失败: %v", err)
 		return "", errors.New("token不存在")
 	}
-	fmt.Printf("[GetInstallScript] ✅ Token找到 - ID: %d, ClientName: %s, Used: %v, ExpiresAt: %v\n", t.ID, t.ClientName, t.Used, t.ExpiresAt)
+	logger.Debugf("[GetInstallScript] ✅ Token找到 - ID: %d, ClientName: %s, Used: %v, ExpiresAt: %v", t.ID, t.ClientName, t.Used, t.ExpiresAt)
 
 	if t.Used {
-		fmt.Printf("[GetInstallScript] ❌ Token已被使用\n")
+		logger.Debug("[GetInstallScript] ❌ Token已被使用")
 		return "", errors.New("token已被使用")
 	}
 
 	if time.Now().After(t.ExpiresAt) {
-		fmt.Printf("[GetInstallScript] ❌ Token已过期 (当前时间: %v, 过期时间: %v)\n", time.Now(), t.ExpiresAt)
+		logger.Debugf("[GetInstallScript] ❌ Token已过期 (当前时间: %v, 过期时间: %v)", time.Now(), t.ExpiresAt)
 		return "", errors.New("token已过期")
 	}
 
-	fmt.Printf("[GetInstallScript] 查找镜像源 ID: %d\n", mirrorID)
+	logger.Debugf("[GetInstallScript] 查找镜像源 ID: %d", mirrorID)
 	mirror, err := s.githubMirrorRepo.GetByID(mirrorID)
 	if err != nil {
-		fmt.Printf("[GetInstallScript] ❌ 镜像源查找失败: %v\n", err)
+		logger.Debugf("[GetInstallScript] ❌ 镜像源查找失败: %v", err)
 		return "", errors.New("镜像源不存在")
 	}
-	fmt.Printf("[GetInstallScript] ✅ 镜像源找到 - Name: %s, BaseURL: %s\n", mirror.Name, mirror.BaseURL)
+	logger.Debugf("[GetInstallScript] ✅ 镜像源找到 - Name: %s, BaseURL: %s", mirror.Name, mirror.BaseURL)
 
-	fmt.Printf("[GetInstallScript] 查找FRP服务器 ID: %d\n", t.FrpServerID)
+	logger.Debugf("[GetInstallScript] 查找FRP服务器 ID: %d", t.FrpServerID)
 	frpServer, err := s.frpServerRepo.GetByID(t.FrpServerID)
 	if err != nil {
-		fmt.Printf("[GetInstallScript] ❌ FRP服务器查找失败: %v\n", err)
+		logger.Debugf("[GetInstallScript] ❌ FRP服务器查找失败: %v", err)
 		return "", errors.New("FRP服务器不存在")
 	}
-	fmt.Printf("[GetInstallScript] ✅ FRP服务器找到 - Name: %s, Version: %s\n", frpServer.Name, frpServer.Version)
+	logger.Debugf("[GetInstallScript] ✅ FRP服务器找到 - Name: %s, Version: %s", frpServer.Name, frpServer.Version)
 
 	version := frpServer.Version
 	if version == "" {
@@ -536,22 +537,22 @@ func (s *ClientRegisterService) generatePowerShellScript(t *model.ClientRegister
 
 // RegisterClient 使用Token注册客户端
 func (s *ClientRegisterService) RegisterClient(token string) (*model.Client, error) {
-	fmt.Printf("[客户端注册] ========================================\n")
-	fmt.Printf("[客户端注册] 收到注册请求 - Token: %s\n", token)
+	logger.Debug("[客户端注册] ========================================")
+	logger.Debugf("[客户端注册] 收到注册请求 - Token: %s", token)
 
 	t, err := s.tokenRepo.FindByToken(token)
 	if err != nil {
-		fmt.Printf("[客户端注册] ❌ Token不存在\n")
+		logger.Debug("[客户端注册] ❌ Token不存在")
 		return nil, errors.New("token不存在")
 	}
 
 	if t.Used {
-		fmt.Printf("[客户端注册] ❌ Token已被使用\n")
+		logger.Debug("[客户端注册] ❌ Token已被使用")
 		return nil, errors.New("token已被使用")
 	}
 
 	if time.Now().After(t.ExpiresAt) {
-		fmt.Printf("[客户端注册] ❌ Token已过期\n")
+		logger.Debug("[客户端注册] ❌ Token已过期")
 		return nil, errors.New("token已过期")
 	}
 
@@ -572,23 +573,23 @@ func (s *ClientRegisterService) RegisterClient(token string) (*model.Client, err
 		FrpcAdminPwd:  t.AdminPassword, // 使用生成的随机密码
 	}
 
-	fmt.Printf("[客户端注册] 创建客户端记录:\n")
-	fmt.Printf("[客户端注册]   Name: %s\n", client.Name)
-	fmt.Printf("[客户端注册]   Server: %s:%d\n", client.ServerAddr, client.ServerPort)
-	fmt.Printf("[客户端注册]   FrpServerID: %d\n", t.FrpServerID)
-	fmt.Printf("[客户端注册]   初始状态: %s (等待守护程序WS连接)\n", client.OnlineStatus)
+	logger.Debug("[客户端注册] 创建客户端记录:")
+	logger.Debugf("[客户端注册]   Name: %s", client.Name)
+	logger.Debugf("[客户端注册]   Server: %s:%d", client.ServerAddr, client.ServerPort)
+	logger.Debugf("[客户端注册]   FrpServerID: %d", t.FrpServerID)
+	logger.Debugf("[客户端注册]   初始状态: %s (等待守护程序WS连接)", client.OnlineStatus)
 
 	if err := s.clientRepo.Create(client); err != nil {
-		fmt.Printf("[客户端注册] ❌ 创建失败: %v\n", err)
+		logger.Errorf("[客户端注册] ❌ 创建失败: %v", err)
 		return nil, err
 	}
 
 	if err := s.tokenRepo.MarkAsUsed(t.ID); err != nil {
-		fmt.Printf("[客户端注册] ⚠️ 标记Token失败: %v\n", err)
+		logger.Warnf("[客户端注册] ⚠️ 标记Token失败: %v", err)
 		return nil, err
 	}
 
-	fmt.Printf("[客户端注册] ✅ 注册成功 - ClientID: %d\n", client.ID)
-	fmt.Printf("[客户端注册] ========================================\n")
+	logger.Debugf("[客户端注册] ✅ 注册成功 - ClientID: %d", client.ID)
+	logger.Debug("[客户端注册] ========================================")
 	return client, nil
 }

@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:24:35
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-23 13:59:06
+ * @LastEditTime        : 2026-01-07 14:30:24
  * @FilePath            : frp-web-testbackendinternalmodelproxy.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -16,9 +16,9 @@ import (
 type Proxy struct {
 	ID                  uint       `json:"id" gorm:"primaryKey"`
 	ClientID            uint       `json:"client_id" gorm:"not null;index"`
-	Name                string     `json:"name" gorm:"size:100;not null"`
+	Name                string     `json:"name" gorm:"size:100;not null;index"`
 	Type                string     `json:"type" gorm:"size:20;not null"`
-	Enabled             bool       `json:"enabled" gorm:"default:true"`
+	Enabled             bool       `json:"enabled" gorm:"default:true;index"`
 	LocalIP             string     `json:"local_ip" gorm:"size:50;default:127.0.0.1"`
 	LocalPort           int        `json:"local_port" gorm:"not null"`
 	RemotePort          int        `json:"remote_port"`
@@ -43,7 +43,7 @@ type Proxy struct {
 	CurrentBytesInRate  int64      `json:"current_bytes_in_rate" gorm:"default:0"`
 	CurrentBytesOutRate int64      `json:"current_bytes_out_rate" gorm:"default:0"`
 	LastTrafficUpdate   *time.Time `json:"last_traffic_update"`
-	FrpStatus           string     `json:"frp_status" gorm:"size:20;default:unknown"`
+	FrpStatus           string     `json:"frp_status" gorm:"size:20;default:unknown;index"`
 	FrpCurConns         int        `json:"frp_cur_conns" gorm:"default:0"`
 	FrpLastStartTime    *time.Time `json:"frp_last_start_time"`
 	FrpLastCloseTime    *time.Time `json:"frp_last_close_time"`

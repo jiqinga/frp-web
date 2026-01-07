@@ -134,7 +134,7 @@ FRP Web Panel is a powerful visual management platform for FRP (Fast Reverse Pro
 ### Backend
 | Technology          | Description             |
 | ------------------- | ----------------------- |
-| Go 1.21+            | Programming Language    |
+| Go 1.24+            | Programming Language    |
 | Gin                 | Web Framework           |
 | GORM                | ORM Framework           |
 | SQLite / PostgreSQL | Database                |
@@ -165,7 +165,7 @@ FRP Web Panel is a powerful visual management platform for FRP (Fast Reverse Pro
 
 ### Requirements
 
-- Go 1.21+
+- Go 1.24+
 - Node.js 18+
 - pnpm / npm / yarn
 
@@ -182,12 +182,11 @@ docker run -d \
   --name frp-web-panel \
   -p 80:80 \
   -v ./data:/app/data \
-  -v ./configs:/app/configs \
   --restart unless-stopped \
   jiqinga/frp-web-panel:latest
 ```
 
-#### Option 2: Using Docker Compose
+#### Option 2: Using Docker Compose (SQLite)
 
 Create `docker-compose.yml`:
 
@@ -207,6 +206,7 @@ services:
       - ./data:/app/data       # Data persistence
       - ./configs:/app/configs # Configuration files
     environment:
+      - LOG_LEVEL=info
       - GIN_MODE=release
       - TZ=Asia/Shanghai
     restart: unless-stopped
@@ -215,6 +215,63 @@ services:
 Start the service:
 ```bash
 docker-compose up -d
+```
+
+#### Option 3: Using Docker Compose (PostgreSQL)
+
+Create `docker-compose-postgres.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  frp-web-panel:
+    image: jiqinga/frp-web-panel:latest
+    container_name: frp-web-panel
+    ports:
+      - "80:80"
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    environment:
+      - DATABASE_TYPE=postgres
+      - DATABASE_POSTGRES_HOST=postgres
+      - DATABASE_POSTGRES_PORT=5432
+      - DATABASE_POSTGRES_USER=frp
+      - DATABASE_POSTGRES_PASSWORD=frp123
+      - DATABASE_POSTGRES_DBNAME=frp_panel
+      - JWT_SECRET=your-secret-key-change-in-production
+      - SECURITY_ENCRYPTION_KEY=12345678901234567890123456789012
+      - LOG_LEVEL=info
+      - TZ=Asia/Shanghai
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: frp-panel-postgres
+    environment:
+      - POSTGRES_USER=frp
+      - POSTGRES_PASSWORD=frp123
+      - POSTGRES_DB=frp_panel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U frp -d frp_panel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+```
+
+Start the service:
+```bash
+docker-compose -f docker-compose-postgres.yml up -d
 ```
 
 #### Option 3: Build Image Locally
@@ -232,7 +289,6 @@ docker run -d \
   --name frp-web-panel \
   -p 80:80 \
   -v ./data:/app/data \
-  -v ./configs:/app/configs \
   frp-web-panel:local
 ```
 
@@ -298,7 +354,10 @@ Configuration file located at `backend/configs/config.yaml`:
 server:
   port: 8080              # API service port
   mode: release           # debug / release
-  public_url: 'http://localhost:8080'  # Public access URL
+
+log:
+  level: info
+  format: console
 
 database:
   type: sqlite            # sqlite / postgres
@@ -322,6 +381,9 @@ frps:
   binary_dir: ./data/frps           # frps binary directory
   config_dir: ./data/frps/configs   # frps configuration directory
   log_dir: ./data/frps/logs         # frps log directory
+  default_version: latest
+  github_api: https://api.github.com/repos/fatedier/frp
+
 ```
 
 ### Environment Variables
@@ -365,54 +427,51 @@ SECURITY_ENCRYPTION_KEY=your-32-character-encryption-key
 
 ```
 frp-web-panel/
-├── backend/                    # Backend service
+├── backend/                    # Go backend service
 │   ├── cmd/server/            # Application entry
 │   │   ├── main.go            # Main function
 │   │   ├── bootstrap.go       # Initialization
 │   │   └── scheduler.go       # Scheduled tasks
 │   ├── configs/               # Configuration files
-│   ├── data/                  # Runtime data
-│   │   ├── daemon/            # Daemon binaries
-│   │   └── frps/              # frps related files
+│   ├── data/                  # Runtime data (IP database, etc.)
+│   ├── docs/                  # Swagger API documentation
 │   ├── internal/              # Internal modules
 │   │   ├── config/            # Configuration loading
 │   │   ├── container/         # Dependency injection container
+│   │   ├── errors/            # Error definitions
+│   │   ├── events/            # Event bus
+│   │   ├── frp/               # FRP client wrapper
 │   │   ├── handler/           # HTTP handlers
+│   │   ├── logger/            # Logging module
 │   │   ├── middleware/        # Middleware
 │   │   ├── model/             # Data models
 │   │   ├── repository/        # Data access layer
 │   │   ├── router/            # Route definitions
 │   │   ├── service/           # Business logic
-│   │   ├── websocket/         # WebSocket handling
-│   │   ├── frp/               # FRP client wrapper
-│   │   └── events/            # Event bus
-│   ├── migrations/            # Database migrations
-│   └── docs/                  # Swagger documentation
-├── web/                       # Frontend application
+│   │   ├── util/              # Utility functions
+│   │   └── websocket/         # WebSocket handling
+│   ├── migrations/            # Database migration scripts
+│   └── pkg/                   # Reusable packages
+├── web/                       # React frontend application
 │   ├── src/
 │   │   ├── api/              # API interface wrapper
+│   │   ├── assets/           # Static assets
 │   │   ├── components/       # Common components
-│   │   ├── pages/            # Page components
-│   │   │   ├── Dashboard/    # Dashboard
-│   │   │   ├── FrpServers/   # Server management
-│   │   │   ├── Clients/      # Client management
-│   │   │   ├── Proxies/      # Proxy management
-│   │   │   ├── Certificates/ # Certificate management
-│   │   │   ├── AlertRules/   # Alert rules
-│   │   │   ├── RealtimeMonitor/ # Real-time monitoring
-│   │   │   ├── Settings/     # System settings
-│   │   │   ├── Logs/         # Operation logs
-│   │   │   └── Login/        # Login page
-│   │   ├── store/            # State management
+│   │   ├── constants/        # Constants definitions
 │   │   ├── hooks/            # Custom Hooks
+│   │   ├── pages/            # Page components
 │   │   ├── router/           # Route configuration
+│   │   ├── store/            # State management
+│   │   ├── styles/           # Style files
 │   │   ├── types/            # TypeScript types
 │   │   └── utils/            # Utility functions
 │   └── public/               # Static assets
+├── docker/                    # Docker related configuration
+│   └── s6-rc.d/              # s6 process management config
 ├── docs/                      # Project documentation
 │   └── screenshots/          # Screenshot files
+├── .github/                   # GitHub configuration
 ├── Dockerfile                 # Docker build file
-├── docker-compose.yml         # Docker Compose configuration
 └── README.md                  # Project documentation
 ```
 

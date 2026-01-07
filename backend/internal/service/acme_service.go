@@ -10,10 +10,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"frp-web-panel/internal/events"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
 	"frp-web-panel/internal/websocket"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -51,7 +51,7 @@ func NewCustomDNSProvider(operator DNSOperator) *CustomDNSProvider {
 
 func (p *CustomDNSProvider) Present(domain, token, keyAuth string) error {
 	fqdn, value := dns01.GetRecord(domain, keyAuth)
-	log.Printf("[ACME] 添加 DNS TXT 记录: %s -> %s", fqdn, value)
+	logger.Infof("ACME 添加 DNS TXT 记录: %s -> %s", fqdn, value)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -66,7 +66,7 @@ func (p *CustomDNSProvider) Present(domain, token, keyAuth string) error {
 
 func (p *CustomDNSProvider) CleanUp(domain, token, keyAuth string) error {
 	fqdn, _ := dns01.GetRecord(domain, keyAuth)
-	log.Printf("[ACME] 清理 DNS TXT 记录: %s", fqdn)
+	logger.Infof("ACME 清理 DNS TXT 记录: %s", fqdn)
 
 	recordID, ok := p.records[fqdn]
 	if !ok {
@@ -77,7 +77,7 @@ func (p *CustomDNSProvider) CleanUp(domain, token, keyAuth string) error {
 	defer cancel()
 
 	if err := p.operator.DeleteTXTRecord(ctx, fqdn, recordID); err != nil {
-		log.Printf("[ACME] 清理 TXT 记录失败: %v", err)
+		logger.Warnf("ACME 清理 TXT 记录失败: %v", err)
 	}
 	delete(p.records, fqdn)
 	return nil
@@ -161,7 +161,7 @@ func createHTTPClientWithTimeout(timeout time.Duration) *http.Client {
 func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, proxyID uint, domain string, providerID uint, autoRenew bool) (*model.Certificate, error) {
 	// 动态获取 ACME 邮箱
 	email := s.getEmail()
-	log.Printf("[ACME] 从设置中获取的邮箱: '%s'", email)
+	logger.Debugf("ACME 从设置中获取的邮箱: '%s'", email)
 
 	// 校验 ACME 邮箱是否已配置
 	if email == "" {
@@ -191,34 +191,34 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 
 	// 步骤1: 验证配置
 	s.notifyProgress(taskID, domain, "validating", "正在验证DNS提供商配置...", "")
-	log.Printf("[ACME] 开始为域名 %s 申请证书, 使用邮箱: %s", domain, email)
+	logger.Infof("ACME 开始为域名 %s 申请证书, 使用邮箱: %s", domain, email)
 
 	// 获取 DNS 提供商
-	log.Printf("[ACME] 正在获取DNS提供商 (ID: %d)...", providerID)
+	logger.Debugf("ACME 正在获取DNS提供商 (ID: %d)...", providerID)
 	provider, err := s.providerRepo.FindByID(providerID)
 	if err != nil {
 		s.notifyProgress(taskID, domain, "failed", "", "获取DNS提供商失败: "+err.Error())
 		return nil, fmt.Errorf("获取 DNS 提供商失败: %w", err)
 	}
-	log.Printf("[ACME] DNS提供商获取成功: %s (类型: %s)", provider.Name, provider.Type)
+	logger.Debugf("ACME DNS提供商获取成功: %s (类型: %s)", provider.Name, provider.Type)
 
 	// 创建 DNS 操作实例
-	log.Printf("[ACME] 正在创建DNS操作实例...")
+	logger.Debug("ACME 正在创建DNS操作实例...")
 	operator, err := s.dnsService.CreateDNSOperator(provider)
 	if err != nil {
 		s.notifyProgress(taskID, domain, "failed", "", "创建DNS操作实例失败: "+err.Error())
 		return nil, fmt.Errorf("创建 DNS 操作实例失败: %w", err)
 	}
-	log.Printf("[ACME] DNS操作实例创建成功")
+	logger.Debug("ACME DNS操作实例创建成功")
 
 	// 生成私钥
-	log.Printf("[ACME] 正在生成私钥...")
+	logger.Debug("ACME 正在生成私钥...")
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		s.notifyProgress(taskID, domain, "failed", "", "生成私钥失败: "+err.Error())
 		return nil, fmt.Errorf("生成私钥失败: %w", err)
 	}
-	log.Printf("[ACME] 私钥生成成功")
+	logger.Debug("ACME 私钥生成成功")
 
 	user := &ACMEUser{
 		Email: email,
@@ -230,7 +230,7 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 
 	var client *lego.Client
 	retryOperation := func() (*lego.Client, error) {
-		log.Printf("[ACME] 尝试连接 Let's Encrypt 服务器...")
+		logger.Debug("ACME 尝试连接 Let's Encrypt 服务器...")
 
 		// 配置 ACME 客户端
 		config := lego.NewConfig(user)
@@ -245,10 +245,10 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 
 		c, err := lego.NewClient(config)
 		if err != nil {
-			log.Printf("[ACME] 连接失败: %v", err)
+			logger.Warnf("ACME 连接失败: %v", err)
 			return nil, err
 		}
-		log.Printf("[ACME] 连接成功")
+		logger.Debug("ACME 连接成功")
 		return c, nil
 	}
 
@@ -261,7 +261,7 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 		}
 		if attempt < maxRetries {
 			waitTime := time.Duration(attempt*2) * time.Second
-			log.Printf("[ACME] 第 %d 次尝试失败，%v 后重试...", attempt, waitTime)
+			logger.Warnf("ACME 第 %d 次尝试失败，%v 后重试...", attempt, waitTime)
 			time.Sleep(waitTime)
 		}
 	}
@@ -289,11 +289,11 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 		s.notifyProgress(taskID, domain, "failed", "", "设置DNS验证失败: "+err.Error())
 		return nil, fmt.Errorf("设置 DNS 验证失败: %w", err)
 	}
-	log.Printf("[ACME] DNS-01 验证提供商设置成功")
+	logger.Debug("ACME DNS-01 验证提供商设置成功")
 
 	// 注册账户（带重试）
 	s.notifyProgress(taskID, domain, "registering", "正在注册ACME账户...", "")
-	log.Printf("[ACME] 正在注册ACME账户...")
+	logger.Debug("ACME 正在注册ACME账户...")
 
 	var reg *registration.Resource
 	regOperation := func() (*registration.Resource, error) {
@@ -308,7 +308,7 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 		}
 		if attempt < maxRetries {
 			waitTime := time.Duration(attempt*2) * time.Second
-			log.Printf("[ACME] 注册账户第 %d 次尝试失败，%v 后重试...", attempt, waitTime)
+			logger.Warnf("ACME 注册账户第 %d 次尝试失败，%v 后重试...", attempt, waitTime)
 			time.Sleep(waitTime)
 		}
 	}
@@ -318,14 +318,14 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 		return nil, fmt.Errorf("注册 ACME 账户失败: %w", err)
 	}
 	user.Registration = reg
-	log.Printf("[ACME] ACME账户注册成功")
+	logger.Debug("ACME ACME账户注册成功")
 
 	// 步骤3: 等待DNS验证
 	s.notifyProgress(taskID, domain, "waiting_dns", "等待DNS记录生效...", "")
 
 	// 步骤4: 申请证书
 	s.notifyProgress(taskID, domain, "requesting", "正在向Let's Encrypt申请证书...", "")
-	log.Printf("[ACME] 正在申请证书...")
+	logger.Debug("ACME 正在申请证书...")
 
 	request := certificate.ObtainRequest{
 		Domains: []string{domain},
@@ -333,7 +333,7 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 	}
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
-		log.Printf("[ACME] 证书申请失败: %v", err)
+		logger.Errorf("ACME 证书申请失败: %v", err)
 		// 保存失败记录
 		cert := &model.Certificate{
 			ProxyID:    proxyID,
@@ -353,7 +353,7 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 
 	// 步骤5: 保存证书
 	s.notifyProgress(taskID, domain, "saving", "正在保存证书...", "")
-	log.Printf("[ACME] 正在保存证书...")
+	logger.Debug("ACME 正在保存证书...")
 
 	// 解析证书有效期
 	notBefore, notAfter, _ := parseCertificateDates(certificates.Certificate)
@@ -379,7 +379,7 @@ func (s *ACMEService) RequestCertificateWithTaskAndAutoRenew(taskID string, prox
 
 	// 完成
 	s.notifyProgress(taskID, domain, "completed", "证书申请成功！", "")
-	log.Printf("[ACME] 证书申请成功: %s, 有效期至 %v", domain, notAfter)
+	logger.Infof("ACME 证书申请成功: %s, 有效期至 %v", domain, notAfter)
 
 	// 发送系统告警通知
 	if s.eventNotifier != nil {
@@ -397,29 +397,29 @@ func (s *ACMEService) pushCertToClient(proxyID uint, domain string, certPEM stri
 	// 获取代理信息以获取客户端ID
 	proxy, err := s.proxyRepo.FindByID(proxyID)
 	if err != nil {
-		log.Printf("[ACME] ❌ 获取代理信息失败 (proxyID=%d): %v", proxyID, err)
+		logger.Errorf("ACME 获取代理信息失败 (proxyID=%d): %v", proxyID, err)
 		return
 	}
 
 	if s.daemonHub == nil {
-		log.Printf("[ACME] ⚠️ DaemonHub 未设置，添加到同步队列")
+		logger.Warn("ACME DaemonHub 未设置，添加到同步队列")
 		GetCertSyncQueue().AddPendingSync(proxy.ClientID, domain, certPEM, keyPEM)
 		return
 	}
 
 	// 检查客户端是否在线
 	if !s.daemonHub.IsClientOnline(proxy.ClientID) {
-		log.Printf("[ACME] ⚠️ 客户端 %d 离线，添加到同步队列", proxy.ClientID)
+		logger.Warnf("ACME 客户端 %d 离线，添加到同步队列", proxy.ClientID)
 		GetCertSyncQueue().AddPendingSync(proxy.ClientID, domain, certPEM, keyPEM)
 		return
 	}
 
 	// 推送证书到客户端
 	if err := s.daemonHub.PushCertSync(proxy.ClientID, domain, certPEM, keyPEM); err != nil {
-		log.Printf("[ACME] ❌ 推送证书到客户端 %d 失败，添加到同步队列: %v", proxy.ClientID, err)
+		logger.Errorf("ACME 推送证书到客户端 %d 失败，添加到同步队列: %v", proxy.ClientID, err)
 		GetCertSyncQueue().AddPendingSync(proxy.ClientID, domain, certPEM, keyPEM)
 	} else {
-		log.Printf("[ACME] ✅ 证书已推送到客户端 %d: domain=%s", proxy.ClientID, domain)
+		logger.Infof("ACME 证书已推送到客户端 %d: domain=%s", proxy.ClientID, domain)
 	}
 }
 
@@ -447,7 +447,7 @@ func (s *ACMEService) renewCertificateInternal(cert *model.Certificate) error {
 		return fmt.Errorf("邮箱域名无效: %s (example.com/org/net 是保留域名，请使用真实邮箱)", email)
 	}
 
-	log.Printf("[ACME] 开始续签证书: ID=%d, 域名=%s", cert.ID, cert.Domain)
+	logger.Infof("ACME 开始续签证书: ID=%d, 域名=%s", cert.ID, cert.Domain)
 
 	// 获取 DNS 提供商
 	provider, err := s.providerRepo.FindByID(cert.ProviderID)
@@ -555,7 +555,7 @@ func (s *ACMEService) renewCertificateInternal(cert *model.Certificate) error {
 		return fmt.Errorf("更新证书记录失败: %w", err)
 	}
 
-	log.Printf("[ACME] ✅ 证书续签成功: ID=%d, 域名=%s, 有效期至 %v", cert.ID, cert.Domain, notAfter)
+	logger.Infof("ACME 证书续签成功: ID=%d, 域名=%s, 有效期至 %v", cert.ID, cert.Domain, notAfter)
 
 	// 发送系统告警通知
 	if s.eventNotifier != nil {
@@ -595,7 +595,7 @@ func (s *ACMEService) ReapplyCertificate(certID uint) error {
 	go func() {
 		newCert, err := s.RequestCertificateWithTask("", cert.ProxyID, cert.Domain, cert.ProviderID)
 		if err != nil {
-			log.Printf("[ACME] 重新申请证书失败: %v", err)
+			logger.Errorf("ACME 重新申请证书失败: %v", err)
 			return
 		}
 		// 更新原证书记录

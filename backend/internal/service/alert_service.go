@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"frp-web-panel/internal/model"
 	"frp-web-panel/internal/repository"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -57,7 +57,8 @@ func (s *AlertService) SetFrpServerRepo(repo *repository.FrpServerRepository) {
 }
 
 func (s *AlertService) CheckAlerts() {
-	rules, err := s.alertRepo.GetEnabledRules()
+	// 只获取 proxy 类型的流量告警规则，避免查询 ProxyID=0 的无效记录
+	rules, err := s.alertRepo.GetEnabledRulesByTargetType(model.AlertTargetProxy)
 	if err != nil {
 		return
 	}
@@ -245,7 +246,7 @@ func (s *AlertService) checkFrpcOfflineAlerts() {
 
 	rules, err := s.alertRepo.GetEnabledRulesByTargetType(model.AlertTargetFrpc)
 	if err != nil {
-		log.Printf("[离线告警] 获取 frpc 告警规则失败: %v", err)
+		logger.Errorf("离线告警 获取 frpc 告警规则失败: %v", err)
 		return
 	}
 
@@ -270,7 +271,7 @@ func (s *AlertService) checkFrpsOfflineAlerts() {
 
 	rules, err := s.alertRepo.GetEnabledRulesByTargetType(model.AlertTargetFrps)
 	if err != nil {
-		log.Printf("[离线告警] 获取 frps 告警规则失败: %v", err)
+		logger.Errorf("离线告警 获取 frps 告警规则失败: %v", err)
 		return
 	}
 
@@ -303,7 +304,7 @@ func (s *AlertService) handleOfflineState(targetKey string, isOffline bool, rule
 		if !pending {
 			// 首次检测到离线，记录时间
 			s.pendingOffline[targetKey] = time.Now()
-			log.Printf("[离线告警] %s %s 检测到离线，等待 %d 秒确认", targetType, targetName, delaySeconds)
+			logger.Infof("离线告警 %s %s 检测到离线，等待 %d 秒确认", targetType, targetName, delaySeconds)
 			return
 		}
 
@@ -341,7 +342,7 @@ func (s *AlertService) handleOfflineState(targetKey string, isOffline bool, rule
 		if err := s.alertRepo.CreateAlert(alert); err == nil {
 			s.sendOfflineNotification(alert, rule, targetName, targetType)
 			s.alertingState[targetKey] = true
-			log.Printf("[离线告警] %s %s 离线告警已发送", targetType, targetName)
+			logger.Infof("离线告警 %s %s 离线告警已发送", targetType, targetName)
 		}
 	} else {
 		// 目标在线
@@ -355,9 +356,9 @@ func (s *AlertService) handleOfflineState(targetKey string, isOffline bool, rule
 		// 如果之前已发送告警且启用了恢复通知，发送恢复通知
 		if wasAlerting && rule.NotifyOnRecovery {
 			s.sendRecoveryNotification(rule, targetName, targetType)
-			log.Printf("[离线告警] %s %s 已恢复在线，恢复通知已发送", targetType, targetName)
+			logger.Infof("离线告警 %s %s 已恢复在线，恢复通知已发送", targetType, targetName)
 		} else if wasPending {
-			log.Printf("[离线告警] %s %s 在延迟确认期内恢复，取消告警", targetType, targetName)
+			logger.Infof("离线告警 %s %s 在延迟确认期内恢复，取消告警", targetType, targetName)
 		}
 	}
 }

@@ -100,7 +100,8 @@ export function useAlerts(): UseAlertsReturn {
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await clientApi.getClients({ page: 1, page_size: 1000 });
+      // 用于下拉选择，使用合理的分页大小
+      const res = await clientApi.getClients({ page: 1, page_size: 100 });
       setClients(res.list || []);
     } catch { /* ignore */ }
   }, []);

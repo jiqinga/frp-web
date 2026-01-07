@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-19 17:07:58
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2025-12-29 16:52:02
+ * @LastEditTime        : 2026-01-07 11:00:45
  * @FilePath            : frp-web-testbackendinternalfrpclient.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -12,8 +12,8 @@ package frp
 import (
 	"encoding/json"
 	"fmt"
+	"frp-web-panel/internal/logger"
 	"io"
-	"log"
 	"net/http"
 	"time"
 )
@@ -38,57 +38,57 @@ func NewClient(host string, port int, username, password string, timeout time.Du
 
 func (c *Client) doRequest(method, path string, result interface{}) error {
 	fullURL := c.baseURL + path
-	log.Printf("[DEBUG] FRP API请求 - Method: %s, URL: %s", method, fullURL)
+	logger.Debugf("FRP API请求 - Method: %s, URL: %s", method, fullURL)
 
 	req, err := http.NewRequest(method, fullURL, nil)
 	if err != nil {
-		log.Printf("[DEBUG] 创建HTTP请求失败: %v", err)
+		logger.Debugf("创建HTTP请求失败: %v", err)
 		return err
 	}
 
 	if c.username != "" && c.password != "" {
 		req.SetBasicAuth(c.username, c.password)
-		log.Printf("[DEBUG] 使用Basic Auth - User: %s", c.username)
+		logger.Debugf("使用Basic Auth - User: %s", c.username)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		log.Printf("[DEBUG] HTTP请求执行失败 - 原始错误: %v", err)
+		logger.Debugf("HTTP请求执行失败 - 原始错误: %v", err)
 		return fmt.Errorf("%w: %v", ErrConnectionFailed, err)
 	}
 	defer resp.Body.Close()
 
-	log.Printf("[DEBUG] HTTP响应 - StatusCode: %d, Status: %s", resp.StatusCode, resp.Status)
+	logger.Debugf("HTTP响应 - StatusCode: %d, Status: %s", resp.StatusCode, resp.Status)
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		log.Printf("[DEBUG] 认证失败 - 401 Unauthorized")
+		logger.Debug("认证失败 - 401 Unauthorized")
 		return ErrAuthFailed
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("[DEBUG] 读取响应体失败: %v", err)
+		logger.Debugf("读取响应体失败: %v", err)
 		return err
 	}
 
-	log.Printf("[DEBUG] 响应体长度: %d bytes", len(body))
+	logger.Debugf("响应体长度: %d bytes", len(body))
 	if len(body) > 0 && len(body) < 1000 {
-		log.Printf("[DEBUG] 响应体内容: %s", string(body))
+		logger.Debugf("响应体内容: %s", string(body))
 	} else if len(body) >= 1000 {
-		log.Printf("[DEBUG] 响应体内容(前500字符): %s...", string(body[:500]))
+		logger.Debugf("响应体内容(前500字符): %s...", string(body[:500]))
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] HTTP状态码异常: %d, 响应: %s", resp.StatusCode, string(body))
+		logger.Debugf("HTTP状态码异常: %d, 响应: %s", resp.StatusCode, string(body))
 		return fmt.Errorf("HTTP状态码 %d: %s", resp.StatusCode, string(body))
 	}
 
 	if result != nil {
 		if err := json.Unmarshal(body, result); err != nil {
-			log.Printf("[DEBUG] JSON解析失败: %v, 响应内容: %s", err, string(body))
+			logger.Debugf("JSON解析失败: %v, 响应内容: %s", err, string(body))
 			return fmt.Errorf("%w: %v", ErrInvalidResponse, err)
 		}
-		log.Printf("[DEBUG] JSON解析成功")
+		logger.Debug("JSON解析成功")
 	}
 
 	return nil
