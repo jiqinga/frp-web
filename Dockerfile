@@ -41,14 +41,20 @@ FROM alpine:3.19
 ENV TZ=Asia/Shanghai
 
 ARG TARGETARCH
-ARG S6_OVERLAY_VERSION=3.2.0.2
+ARG S6_OVERLAY_VERSION=3.2.1.0
 
-# 安装 s6-overlay
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${TARGETARCH}.tar.xz /tmp
+# 安装依赖并下载 s6-overlay（需要映射架构名称）
 RUN apk add --no-cache nginx ca-certificates tzdata sqlite-libs xz curl \
+    && S6_ARCH=$(case ${TARGETARCH} in \
+    amd64) echo "x86_64" ;; \
+    arm64) echo "aarch64" ;; \
+    arm) echo "arm" ;; \
+    *) echo ${TARGETARCH} ;; \
+    esac) \
+    && curl -fsSL "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" -o /tmp/s6-overlay-noarch.tar.xz \
+    && curl -fsSL "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" -o /tmp/s6-overlay-arch.tar.xz \
     && tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
-    && tar -C / -Jxpf /tmp/s6-overlay-${TARGETARCH}.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-arch.tar.xz \
     && rm -f /tmp/s6-overlay-*.tar.xz \
     && mkdir -p /app/data /app/data/daemon /app/configs /var/run/nginx /usr/share/nginx/html
 
