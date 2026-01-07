@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2026-01-07 10:43:31
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2026-01-07 14:50:57
+ * @LastEditTime        : 2026-01-07 16:23:57
  * @FilePath            : frp-web-testbackendinternalloggerlogger.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -10,6 +10,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -97,15 +98,83 @@ func Sync() {
 	}
 }
 
-// 便捷函数
-func Debug(msg string, fields ...zap.Field) { L.Debug(msg, fields...) }
-func Info(msg string, fields ...zap.Field)  { L.Info(msg, fields...) }
-func Warn(msg string, fields ...zap.Field)  { L.Warn(msg, fields...) }
-func Error(msg string, fields ...zap.Field) { L.Error(msg, fields...) }
+// 便捷函数（带空指针保护）
+func Debug(msg string, fields ...zap.Field) {
+	if L == nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG] %s\n", msg)
+		return
+	}
+	L.Debug(msg, fields...)
+}
 
-func Debugf(template string, args ...interface{}) { S.Debugf(template, args...) }
-func Infof(template string, args ...interface{})  { S.Infof(template, args...) }
-func Warnf(template string, args ...interface{})  { S.Warnf(template, args...) }
-func Errorf(template string, args ...interface{}) { S.Errorf(template, args...) }
-func Fatal(msg string, fields ...zap.Field)       { L.Fatal(msg, fields...) }
-func Fatalf(template string, args ...interface{}) { S.Fatalf(template, args...) }
+func Info(msg string, fields ...zap.Field) {
+	if L == nil {
+		fmt.Fprintf(os.Stderr, "[INFO] %s\n", msg)
+		return
+	}
+	L.Info(msg, fields...)
+}
+
+func Warn(msg string, fields ...zap.Field) {
+	if L == nil {
+		fmt.Fprintf(os.Stderr, "[WARN] %s\n", msg)
+		return
+	}
+	L.Warn(msg, fields...)
+}
+
+func Error(msg string, fields ...zap.Field) {
+	if L == nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] %s\n", msg)
+		return
+	}
+	L.Error(msg, fields...)
+}
+
+func Debugf(template string, args ...interface{}) {
+	if S == nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG] "+template+"\n", args...)
+		return
+	}
+	S.Debugf(template, args...)
+}
+
+func Infof(template string, args ...interface{}) {
+	if S == nil {
+		fmt.Fprintf(os.Stderr, "[INFO] "+template+"\n", args...)
+		return
+	}
+	S.Infof(template, args...)
+}
+
+func Warnf(template string, args ...interface{}) {
+	if S == nil {
+		fmt.Fprintf(os.Stderr, "[WARN] "+template+"\n", args...)
+		return
+	}
+	S.Warnf(template, args...)
+}
+
+func Errorf(template string, args ...interface{}) {
+	if S == nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] "+template+"\n", args...)
+		return
+	}
+	S.Errorf(template, args...)
+}
+
+func Fatal(msg string, fields ...zap.Field) {
+	if L == nil {
+		fmt.Fprintf(os.Stderr, "[FATAL] %s\n", msg)
+		os.Exit(1)
+	}
+	L.Fatal(msg, fields...)
+}
+
+func Fatalf(template string, args ...interface{}) {
+	if S == nil {
+		fmt.Fprintf(os.Stderr, "[FATAL] "+template+"\n", args...)
+		os.Exit(1)
+	}
+	S.Fatalf(template, args...)
+}
