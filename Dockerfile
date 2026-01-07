@@ -1,3 +1,6 @@
+# 全局构建参数
+ARG VERSION=dev
+
 # Stage 1: 构建前端
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/web
@@ -9,22 +12,23 @@ RUN npm run build
 # Stage 2: 构建后端
 FROM golang:1.24-alpine AS backend-builder
 ARG TARGETARCH
+ARG VERSION=dev
 WORKDIR /app
 RUN apk add --no-cache gcc musl-dev
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o server ./cmd/server
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w -X main.Version=${VERSION}" -o server ./cmd/server
 
 # Stage 3: 构建 daemon 守护程序（多平台）
 FROM golang:1.24-alpine AS daemon-builder
+ARG VERSION=dev
 WORKDIR /app
 COPY frpc-daemon-ws/go.mod frpc-daemon-ws/go.sum ./
 RUN go mod download
 COPY frpc-daemon-ws/ ./
-# 获取构建时间作为版本号
-RUN BUILD_TIME=$(date +%Y%m%d-%H%M%S) && \
-    LDFLAGS="-s -w -X main.BuildTime=${BUILD_TIME}" && \
+# 使用版本号
+RUN LDFLAGS="-s -w -X main.BuildTime=${VERSION}" && \
     mkdir -p /output && \
     GOOS=linux GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-amd64 && \
     GOOS=linux GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-arm64 && \
