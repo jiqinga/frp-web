@@ -27,16 +27,15 @@ WORKDIR /app
 COPY frpc-daemon-ws/go.mod frpc-daemon-ws/go.sum ./
 RUN go mod download
 COPY frpc-daemon-ws/ ./
-# 使用版本号
-RUN LDFLAGS="-s -w -X main.BuildTime=${VERSION}" && \
-    mkdir -p /output && \
-    GOOS=linux GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-amd64 && \
-    GOOS=linux GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-arm64 && \
-    GOOS=linux GOARCH=arm go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-linux-arm && \
-    GOOS=windows GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-windows-amd64.exe && \
-    GOOS=windows GOARCH=386 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-windows-386.exe && \
-    GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-darwin-amd64 && \
-    GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o /output/frpc-daemon-ws-darwin-arm64
+# 使用版本号构建多平台二进制文件
+RUN mkdir -p /output && \
+    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.BuildTime=${VERSION}" -o /output/frpc-daemon-ws-linux-amd64 && \
+    GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.BuildTime=${VERSION}" -o /output/frpc-daemon-ws-linux-arm64 && \
+    GOOS=linux GOARCH=arm go build -ldflags="-s -w -X main.BuildTime=${VERSION}" -o /output/frpc-daemon-ws-linux-arm && \
+    GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.BuildTime=${VERSION}" -o /output/frpc-daemon-ws-windows-amd64.exe && \
+    GOOS=windows GOARCH=386 go build -ldflags="-s -w -X main.BuildTime=${VERSION}" -o /output/frpc-daemon-ws-windows-386.exe && \
+    GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.BuildTime=${VERSION}" -o /output/frpc-daemon-ws-darwin-amd64 && \
+    GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.BuildTime=${VERSION}" -o /output/frpc-daemon-ws-darwin-arm64
 
 # Stage 4: 最终运行镜像
 FROM alpine:3.19
