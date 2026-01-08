@@ -3,7 +3,7 @@
 # @Author              : 寂情啊
 # @Date                : 2025-11-25 17:02:22
 # @LastEditors         : 寂情啊
-# @LastEditTime        : 2026-01-08 10:33:53
+# @LastEditTime        : 2026-01-08 14:20:45
 # @FilePath            : frp-web-testfrpc-daemon-wsbuild.sh
 # @Description         : 多平台构建脚本，支持外部传入 VERSION 和 OUTPUT_DIR
 # @倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -26,31 +26,31 @@ echo ""
 
 # Linux AMD64
 echo "构建 Linux AMD64..."
-GOOS=linux GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-linux-amd64"
+GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-linux-amd64"
 
 # Linux ARM64
 echo "构建 Linux ARM64..."
-GOOS=linux GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-linux-arm64"
+GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-linux-arm64"
 
 # Linux ARM
 echo "构建 Linux ARM..."
-GOOS=linux GOARCH=arm go build -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-linux-arm"
+GOOS=linux GOARCH=arm go build -trimpath -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-linux-arm"
 
 # Windows AMD64
 echo "构建 Windows AMD64..."
-GOOS=windows GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-windows-amd64.exe"
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-windows-amd64.exe"
 
 # Windows 386
 echo "构建 Windows 386..."
-GOOS=windows GOARCH=386 go build -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-windows-386.exe"
+GOOS=windows GOARCH=386 go build -trimpath -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-windows-386.exe"
 
 # macOS AMD64
 echo "构建 macOS AMD64..."
-GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-darwin-amd64"
+GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-darwin-amd64"
 
 # macOS ARM64
 echo "构建 macOS ARM64..."
-GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-darwin-arm64"
+GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="${LDFLAGS}" -o "${OUTPUT_DIR}/frpc-daemon-ws-darwin-arm64"
 
 echo ""
 echo "✅ 构建完成!"

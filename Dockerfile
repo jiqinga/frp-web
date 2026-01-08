@@ -18,7 +18,7 @@ RUN apk add --no-cache gcc musl-dev
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w -X main.Version=${VERSION}" -o server ./cmd/server
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X main.Version=${VERSION}" -o server ./cmd/server
 
 # Stage 3: 构建 daemon 守护程序（多平台）
 FROM golang:1.24-alpine AS daemon-builder
