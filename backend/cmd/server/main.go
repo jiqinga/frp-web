@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 15:28:16
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2026-01-07 14:28:07
+ * @LastEditTime        : 2026-01-08 14:05:24
  * @FilePath            : frp-web-testbackendcmdservermain.go
  * @Description         : 程序入口
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -43,7 +43,6 @@ import (
 
 	_ "frp-web-panel/docs"
 
-	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -70,7 +69,8 @@ func main() {
 	gin.SetMode(result.Config.Server.Mode)
 	r := gin.Default()
 
-	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	// 添加条件Gzip中间件，跳过WebSocket请求
+	r.Use(middleware.ConditionalGzip())
 	r.Use(middleware.SecurityHeadersMiddleware())
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.RateLimitMiddleware(100))

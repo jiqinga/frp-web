@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-17 16:19:07
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2026-01-07 11:05:24
+ * @LastEditTime        : 2026-01-08 14:11:58
  * @FilePath            : frp-web-testbackendinternalservicerealtime_service.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -79,7 +79,7 @@ func (s *RealtimeService) collectTrafficData() {
 			clientNameMap[client.ID] = client.Name
 		}
 
-		var trafficData []map[string]interface{}
+		trafficData := make([]map[string]interface{}, 0)
 		onlineCount := 0
 		offlineCount := 0
 		nilTimeCount := 0

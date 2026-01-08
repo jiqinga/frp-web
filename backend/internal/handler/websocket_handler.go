@@ -2,7 +2,7 @@
  * @Author              : 寂情啊
  * @Date                : 2025-11-14 16:25:18
  * @LastEditors         : 寂情啊
- * @LastEditTime        : 2026-01-07 10:58:25
+ * @LastEditTime        : 2026-01-08 11:32:07
  * @FilePath            : frp-web-testbackendinternalhandlerwebsocket_handler.go
  * @Description         : 说明
  * 倾尽绿蚁花尽开，问潭底剑仙安在哉
@@ -67,6 +67,12 @@ func (h *WebSocketHandler) HandleConnection(c *gin.Context) {
 	h.hub.Register <- client
 	logger.Debug("[WebSocket] 客户端已注册到Hub")
 
+	// 启动写入协程
 	go client.WritePump()
-	go client.ReadPump()
+
+	// ReadPump 在当前协程运行，阻塞直到连接关闭
+	// 这样可以防止 Gin 中间件在连接关闭前尝试写入响应
+	client.ReadPump()
+
+	logger.Debug("[WebSocket] 连接已关闭")
 }
