@@ -181,7 +181,7 @@ docker pull jiqinga/frp-web-panel:latest
 docker run -d \
   --name frp-web-panel \
   -p 80:80 \
-  -v ./data:/app/data \
+  -v ./data:/app/data/db \
   --restart unless-stopped \
   jiqinga/frp-web-panel:latest
 ```
@@ -203,7 +203,7 @@ services:
       # - "7000:7000"  # frps bind_port
       # - "7500:7500"  # frps dashboard
     volumes:
-      - ./data:/app/data       # Data persistence
+      - ./data:/app/data/db       # Data persistence
       - ./configs:/app/configs # Configuration files
     environment:
       - LOG_LEVEL=info
@@ -231,7 +231,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data/db
       - ./configs:/app/configs
     environment:
       - DATABASE_TYPE=postgres
@@ -288,7 +288,7 @@ docker build -t frp-web-panel:local .
 docker run -d \
   --name frp-web-panel \
   -p 80:80 \
-  -v ./data:/app/data \
+  -v ./data:/app/data/db \
   frp-web-panel:local
 ```
 
@@ -362,7 +362,7 @@ log:
 database:
   type: sqlite            # sqlite / postgres
   sqlite:
-    path: ./data/frp_panel.db
+    path: ./data/db/frp_panel.db
   postgres:
     host: localhost
     port: 5432
@@ -398,7 +398,7 @@ SERVER_PUBLIC_URL=https://your-domain.com
 
 # Database configuration
 DB_TYPE=sqlite
-DB_SQLITE_PATH=./data/frp_panel.db
+DB_SQLITE_PATH=./db/frp_panel.db
 
 # JWT configuration
 JWT_SECRET=your-super-secret-key
@@ -412,7 +412,7 @@ SECURITY_ENCRYPTION_KEY=your-32-character-encryption-key
 
 | Path           | Description                           |
 | -------------- | ------------------------------------- |
-| `/app/data`    | Database, frps binaries, daemon files |
+| `/app/data/db` | Database, frps binaries, daemon files |
 | `/app/configs` | Configuration files                   |
 
 ### Port Description

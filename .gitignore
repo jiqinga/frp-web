@@ -1,6 +1,6 @@
 .ace-tool/
 .idea/
-backend/data/frp_panel.db
+backend/data/db/frp_panel.db
 backend/data/daemon/
 backend/data/frps/
 .kilocode/

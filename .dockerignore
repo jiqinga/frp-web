@@ -20,7 +20,7 @@ web/dist
 backend/server
 
 # Data files (will be mounted as volumes)
-backend/data/frp_panel.db
+backend/data/db/frp_panel.db
 backend/data/frps
 
 # Docs

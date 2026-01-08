@@ -181,7 +181,7 @@ docker pull jiqinga/frp-web-panel:latest
 docker run -d \
   --name frp-web-panel \
   -p 80:80 \
-  -v ./data:/app/data \
+  -v ./data:/app/data/db \
   --restart unless-stopped \
   jiqinga/frp-web-panel:latest
 ```
@@ -203,7 +203,7 @@ services:
       # - "7000:7000"  # frps bind_port
       # - "7500:7500"  # frps dashboard
     volumes:
-      - ./data:/app/data       # 数据持久化
+      - ./data:/app/data/db       # 数据持久化
       - ./configs:/app/configs # 配置文件
     environment:
       - LOG_LEVEL=info
@@ -231,7 +231,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data/db
       - ./configs:/app/configs
     environment:
       - DATABASE_TYPE=postgres
@@ -288,7 +288,7 @@ docker build -t frp-web-panel:local .
 docker run -d \
   --name frp-web-panel \
   -p 80:80 \
-  -v ./data:/app/data \
+  -v ./data:/app/data/db \
   frp-web-panel:local
 ```
 
@@ -363,7 +363,7 @@ log:
 database:
   type: sqlite            # sqlite / postgres
   sqlite:
-    path: ./data/frp_panel.db
+    path: ./data/db/frp_panel.db
   postgres:
     host: localhost
     port: 5432
@@ -398,7 +398,7 @@ SERVER_PUBLIC_URL=https://your-domain.com
 
 # 数据库配置
 DB_TYPE=sqlite
-DB_SQLITE_PATH=./data/frp_panel.db
+DB_SQLITE_PATH=./data/db/frp_panel.db
 
 # JWT 配置
 JWT_SECRET=your-super-secret-key
@@ -410,10 +410,10 @@ SECURITY_ENCRYPTION_KEY=your-32-character-encryption-key
 
 ### Docker 数据卷说明
 
-| 路径           | 说明                                  |
-| -------------- | ------------------------------------- |
-| `/app/data`    | 数据库、frps 二进制文件、守护进程文件 |
-| `/app/configs` | 配置文件                              |
+| 路径           | 说明     |
+| -------------- | -------- |
+| `/app/data/db` | 数据库   |
+| `/app/configs` | 配置文件 |
 
 ### 端口说明
 
@@ -538,7 +538,7 @@ heartbeat_sec: 30                                         # 心跳间隔（秒�
 3. **配置加密密钥**: 修改 `security.encryption_key` 为随机 32 字符字符串
 4. **使用 HTTPS**: 生产环境建议配置 SSL/TLS 证书
 5. **限制访问**: 使用防火墙限制面板访问来源
-6. **定期备份**: 定期备份 `/app/data` 目录
+6. **定期备份**: 定期备份 `/app/data/db` 目录
 
 ## 🤝 贡献指南
 
